@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>최예슬의 공부</title>
+<title>오늘의 공부</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -23,6 +23,24 @@
     --bad:#FF6B6B;
     --shadow: 0 10px 24px rgba(60,50,120,0.10);
     color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]):not([data-theme="red"]){
+      --bg:#181622;
+      --surface:#221F30;
+      --surface-2:#2B2740;
+      --ink:#EEEBFA;
+      --ink-soft:#9C96C2;
+      --line: rgba(238,235,250,0.10);
+      --primary:#9B93FF;
+      --primary-ink:#181622;
+      --accent:#FFC97A;
+      --accent-ink:#3A2C10;
+      --good:#5FDBA3;
+      --bad:#FF8585;
+      --shadow: 0 10px 24px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
   }
   :root[data-theme="dark"]{
     --bg:#181622;
@@ -283,11 +301,10 @@
     flex:none; width:36px;height:36px;border-radius:50%; border:none;
     background:var(--good); color:#fff; font-size:16px; cursor:pointer;
   }
-  .vocab-undo{
+  .vocab-incorrect{
     flex:none; width:36px;height:36px;border-radius:50%; border:none;
-    background:var(--surface-2); color:var(--ink-soft); font-size:15px; cursor:pointer;
+    background:var(--bad); color:#fff; font-size:16px; cursor:pointer;
   }
-  .vocab-undo:disabled{ opacity:.4; cursor:default; }
   .vocab-actions{ display:flex; gap:6px; flex:none; }
 
   /* study timer */
@@ -318,6 +335,23 @@
   }
 
   /* records */
+  .chart-title{ font-size:14px; font-weight:700; margin-bottom:14px; }
+  .bar-row{ margin-bottom:14px; }
+  .bar-row:last-child{ margin-bottom:0; }
+  .bar-labels{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:5px; font-size:13px;
+  }
+  .bar-labels .b-name{ font-weight:700; }
+  .bar-labels .b-count{ color:var(--primary); font-weight:700; font-size:12px; }
+  .bar-track{
+    width:100%; height:10px; border-radius:6px; background:var(--surface-2);
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%; border-radius:6px; background:var(--primary);
+    transition:width .4s ease;
+  }
   .record-row{
     display:flex; justify-content:space-between; align-items:center;
     padding:12px 4px; border-bottom:1px solid var(--line);
@@ -504,11 +538,11 @@
     <div class="topbar"><div><h1>공부하기</h1><div class="sub">집중 시간을 기록해요</div></div></div>
     <div class="page" style="padding-top:0;">
       <div class="card timer-card">
-        <input type="text" id="subject-input" class="subject-input" placeholder="어떤 공부를 할까요? (예: 수학)">
+        <select id="subject-input" class="subject-input"></select>
+        <div class="empty-note hidden" id="no-todo-note" style="padding:0 0 12px;">오늘 등록된 일정이 없어요. 홈에서 먼저 일정을 추가해주세요.</div>
         <div class="timer-display" id="timer-display">00:00:00</div>
         <button class="big-btn start" id="timer-toggle">공부 시작</button>
         <div class="result-box hidden" id="result-box"></div>
-        <div class="chip-row" id="subject-chips"></div>
       </div>
     </div>
   </section>
@@ -527,6 +561,7 @@
           <div class="cap">기록한 날</div>
         </div>
       </div>
+      <div class="card" id="record-chart" style="margin-bottom:14px;"></div>
       <div class="card" id="record-list"></div>
     </div>
   </section>
@@ -562,43 +597,10 @@
   const todayKey = () => dateKey(new Date());
 
   /* ---------- state ---------- */
-  // 이 버전에서는 최초 실행 시 화이트 테마를 기본값으로 한 번 확정합니다.
-  // 이후 사용자가 직접 다른 테마를 선택하면 그 선택은 그대로 저장됩니다.
-  const THEME_DEFAULT_VERSION = 'white-default-v2';
-  let theme;
-  if(LS.get('planner_theme_default_version', '') !== THEME_DEFAULT_VERSION){
-    theme = 'light';
-    LS.set('planner_theme', 'light');
-    LS.set('planner_theme_default_version', THEME_DEFAULT_VERSION);
-  }else{
-    theme = LS.get('planner_theme', 'light');
-  }
-
+  let theme = LS.get('planner_theme', 'light');
   let schedule = LS.get('planner_schedule', {});      // { 'YYYY-MM-DD': [{id,text,checked}] }
   let vocab = LS.get('planner_vocab', []);            // [{id,word,meaning,count}]
   let study = LS.get('planner_study', {});            // { subject: { sessions:[{date,seconds}] } }
-
-  // 같은 공부를 같은 날 여러 번 시작/종료했던 기존 기록은 하루 1회로 합칩니다.
-  // 시간은 모두 더하되 횟수는 날짜별 1회만 유지합니다.
-  function mergeStudySessionsByDate(){
-    let changed = false;
-    Object.keys(study).forEach(name=>{
-      const sessions = Array.isArray(study[name]?.sessions) ? study[name].sessions : [];
-      const byDate = {};
-      sessions.forEach(s=>{
-        if(!s || !s.date) return;
-        if(!byDate[s.date]) byDate[s.date] = { date:s.date, seconds:0 };
-        byDate[s.date].seconds += Number(s.seconds) || 0;
-      });
-      const merged = Object.values(byDate);
-      if(merged.length !== sessions.length || merged.some((s,i)=>!sessions[i] || s.date!==sessions[i].date || s.seconds!==sessions[i].seconds)){
-        study[name] = { sessions: merged };
-        changed = true;
-      }
-    });
-    if(changed) LS.set('planner_study', study);
-  }
-  mergeStudySessionsByDate();
 
   let calViewDate = new Date();
   let selectedDate = new Date();
@@ -633,6 +635,7 @@
     });
     if(name==='vocab') renderVocab();
     if(name==='record') renderRecords();
+    if(name==='study' && !timerRunning && typeof renderStudySelect === 'function') renderStudySelect();
   }
   document.querySelectorAll('.nav-btn').forEach(b=>{
     b.addEventListener('click', ()=>showPage(b.dataset.page));
@@ -776,6 +779,7 @@
         renderDayPanel();
         renderCalendar();
         renderWeekRow();
+        if(typeof renderStudySelect === 'function') renderStudySelect();
       });
       const span = document.createElement('span');
       span.textContent = item.text;
@@ -788,6 +792,7 @@
         renderDayPanel();
         renderCalendar();
         renderWeekRow();
+        if(typeof renderStudySelect === 'function') renderStudySelect();
       });
       li.appendChild(chk);
       li.appendChild(span);
@@ -900,22 +905,16 @@
     renderDayPanel();
     renderCalendar();
     renderWeekRow();
+    if(typeof renderStudySelect === 'function') renderStudySelect();
   }
 
-  // auto-check a checklist item on a given date whose text includes subject name
-  function autoCheckByName(dateStr, name){
+  // auto-check the exact checklist item the study session was linked to
+  function autoCheckById(dateStr, todoId){
     const items = schedule[dateStr];
-    if(!items) return;
-    const lower = name.trim().toLowerCase();
-    if(!lower) return;
-    let changed = false;
-    items.forEach(it=>{
-      if(!it.checked && it.text.toLowerCase().includes(lower)){
-        it.checked = true;
-        changed = true;
-      }
-    });
-    if(changed){
+    if(!items || !todoId) return;
+    const target = items.find(it=>it.id===todoId);
+    if(target && !target.checked){
+      target.checked = true;
       saveSchedule();
       if(dateKey(selectedDate)===dateStr){ renderDayPanel(); }
       renderCalendar();
@@ -950,20 +949,19 @@
       const actions = document.createElement('div');
       actions.className = 'vocab-actions';
 
-      const undoBtn = document.createElement('button');
-      undoBtn.className = 'vocab-undo';
-      undoBtn.textContent = '↺';
-      undoBtn.disabled = v.count <= 0;
-      undoBtn.addEventListener('click', ()=>{
-        if(v.count > 0){
-          v.count -= 1;
-          saveVocab();
-          renderVocab();
-        }
+      const wrongBtn = document.createElement('button');
+      wrongBtn.className = 'vocab-incorrect';
+      wrongBtn.title = '틀렸어요';
+      wrongBtn.textContent = '✕';
+      wrongBtn.addEventListener('click', ()=>{
+        v.count -= 1;
+        saveVocab();
+        renderVocab();
       });
 
       const btn = document.createElement('button');
       btn.className = 'vocab-check';
+      btn.title = '맞았어요';
       btn.textContent = '✓';
       btn.addEventListener('click', ()=>{
         v.count += 1;
@@ -971,7 +969,7 @@
         renderVocab();
       });
 
-      actions.appendChild(undoBtn);
+      actions.appendChild(wrongBtn);
       actions.appendChild(btn);
       row.appendChild(actions);
       wrap.appendChild(row);
@@ -1111,14 +1109,15 @@
       const fb = overlay.querySelector('#quiz-feedback');
       if(ok){
         cur.count += 1;
-        saveVocab();
         quizState.correct += 1;
         fb.textContent = '정답이에요! 🎉';
         fb.className = 'quiz-feedback ok';
       }else{
+        cur.count -= 1;
         fb.textContent = `아쉬워요! 정답: ${target}`;
         fb.className = 'quiz-feedback no';
       }
+      saveVocab();
       overlay.querySelector('#quiz-submit').disabled = true;
       input.disabled = true;
       setTimeout(()=>{
@@ -1137,6 +1136,7 @@
   let timerStart = null;
   let timerInterval = null;
   let currentSessionDate = null;
+  let currentTodoId = null;
 
   function fmtHMS(totalSeconds){
     const h = Math.floor(totalSeconds/3600);
@@ -1151,20 +1151,39 @@
     return m>0 ? `${h}시간 ${m}분` : `${h}시간`;
   }
 
-  function renderSubjectChips(){
-    const wrap = document.getElementById('subject-chips');
-    wrap.innerHTML = '';
-    Object.keys(study).forEach(name=>{
-      const chip = document.createElement('button');
-      chip.className = 'chip';
-      chip.textContent = name;
-      chip.addEventListener('click', ()=>{
-        document.getElementById('subject-input').value = name;
-      });
-      wrap.appendChild(chip);
-    });
+  function getTodayTodoList(){
+    const key = todayKey();
+    return schedule[key] || [];
   }
-  renderSubjectChips();
+
+  function renderStudySelect(){
+    const select = document.getElementById('subject-input');
+    const note = document.getElementById('no-todo-note');
+    const btn = document.getElementById('timer-toggle');
+    const todos = getTodayTodoList();
+    const prevValue = select.value;
+
+    select.innerHTML = '';
+    if(todos.length===0){
+      note.classList.remove('hidden');
+      select.classList.add('hidden');
+      btn.disabled = true;
+      return;
+    }
+    note.classList.add('hidden');
+    select.classList.remove('hidden');
+    btn.disabled = false;
+
+    todos.forEach(item=>{
+      const o = document.createElement('option');
+      o.value = item.id;
+      o.textContent = item.text + (item.checked ? ' (완료)' : '');
+      select.appendChild(o);
+    });
+    const stillExists = todos.some(t=>t.id===prevValue);
+    if(stillExists) select.value = prevValue;
+  }
+  renderStudySelect();
 
   document.getElementById('timer-toggle').addEventListener('click', ()=>{
     const subjInput = document.getElementById('subject-input');
@@ -1173,11 +1192,13 @@
     const resultBox = document.getElementById('result-box');
 
     if(!timerRunning){
-      const name = subjInput.value.trim();
-      if(!name){ alert('무슨 공부를 할지 입력해주세요!'); return; }
+      const todos = getTodayTodoList();
+      const selectedTodo = todos.find(t=>t.id===subjInput.value);
+      if(!selectedTodo){ alert('오늘 일정에서 공부할 항목을 먼저 선택해주세요!'); return; }
       timerRunning = true;
       timerStart = Date.now();
       currentSessionDate = todayKey();
+      currentTodoId = selectedTodo.id;
       resultBox.classList.add('hidden');
       btn.textContent = '공부 끝';
       btn.classList.remove('start'); btn.classList.add('stop');
@@ -1190,22 +1211,23 @@
       clearInterval(timerInterval);
       timerRunning = false;
       const elapsedSec = Math.max(1, Math.floor((Date.now()-timerStart)/1000));
-      const name = subjInput.value.trim();
+      const todos = getTodayTodoList();
+      const selectedTodo = todos.find(t=>t.id===currentTodoId) || { text: subjInput.value };
+      const name = selectedTodo.text;
 
       if(!study[name]) study[name] = { sessions: [] };
-      const sameDaySession = study[name].sessions.find(s=>s.date === currentSessionDate);
-      if(sameDaySession){
-        // 같은 공부를 같은 날 다시 시작해도 시간만 누적하고 횟수는 늘리지 않습니다.
-        sameDaySession.seconds += elapsedSec;
-      }else{
+      // 같은 항목을 같은 날 여러 번 시작/종료해도 공부 횟수는 하루에 1회로만 집계
+      const existingToday = study[name].sessions.find(s=>s.date===currentSessionDate);
+      if(existingToday){
+        existingToday.seconds += elapsedSec;
+      } else {
         study[name].sessions.push({ date: currentSessionDate, seconds: elapsedSec });
       }
       saveStudy();
 
       const sessions = study[name].sessions;
       const total = sessions.reduce((a,s)=>a+s.seconds,0);
-      const studyCount = sessions.length; // 날짜별 1회
-      const avg = total / studyCount;
+      const avg = total / sessions.length;
 
       resultBox.classList.remove('hidden');
       resultBox.innerHTML = `
@@ -1220,8 +1242,9 @@
       display.textContent = '00:00:00';
       subjInput.disabled = false;
 
-      autoCheckByName(currentSessionDate, name);
-      renderSubjectChips();
+      autoCheckById(currentSessionDate, currentTodoId);
+      currentTodoId = null;
+      renderStudySelect();
     }
   });
 
@@ -1229,9 +1252,11 @@
   function renderRecords(){
     const names = Object.keys(study);
     const list = document.getElementById('record-list');
+    const chart = document.getElementById('record-chart');
 
     if(names.length===0){
       list.innerHTML = '<div class="empty-note">아직 공부 기록이 없어요. 공부하기에서 타이머를 시작해보세요!</div>';
+      chart.innerHTML = '';
       document.getElementById('daily-avg').textContent = '0분';
       document.getElementById('total-days').textContent = '0일';
       return;
@@ -1240,26 +1265,46 @@
     list.innerHTML = '';
     let grandTotal = 0;
     const allDays = new Set();
+    const counts = [];
 
     names.forEach(name=>{
       const sessions = study[name].sessions;
       const total = sessions.reduce((a,s)=>a+s.seconds,0);
-      const studyCount = new Set(sessions.map(s=>s.date)).size; // 같은 날 같은 공부는 1회
-      const avg = studyCount > 0 ? total / studyCount : 0;
+      const avg = total / sessions.length;
       grandTotal += total;
       sessions.forEach(s=>allDays.add(s.date));
+      counts.push({ name, count: sessions.length, total });
 
       const row = document.createElement('div');
       row.className = 'record-row';
       row.innerHTML = `
         <div>
           <div class="record-name">${escapeHtml(name)}</div>
-          <div class="record-sub">누적 ${fmtMinutes(total)} · ${studyCount}회</div>
+          <div class="record-sub">누적 ${fmtMinutes(total)} · ${sessions.length}회</div>
         </div>
         <div class="record-val">평균 ${fmtMinutes(avg)}</div>
       `;
       list.appendChild(row);
     });
+
+    // 공부 횟수 막대그래프 (횟수가 많은 순)
+    counts.sort((a,b)=>b.count-a.count);
+    const maxCount = Math.max(...counts.map(c=>c.count), 1);
+    chart.innerHTML = '<div class="chart-title">공부 횟수</div>' +
+      counts.map(c=>{
+        const pct = Math.round((c.count / maxCount) * 100);
+        return `
+          <div class="bar-row">
+            <div class="bar-labels">
+              <span class="b-name">${escapeHtml(c.name)}</span>
+              <span class="b-count">${c.count}회</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%;"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
 
     const dayCount = allDays.size || 1;
     document.getElementById('daily-avg').textContent = fmtMinutes(grandTotal/dayCount);
