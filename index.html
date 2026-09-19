@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>교무 수첩 — 메모로 정리하는 일정표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F7F5EF;
+    --surface: #FFFFFF;
+    --ink: #1B2A41;
+    --ink-soft: #57647A;
+    --ink-faint: #8891A0;
+    --accent: #3F6C58;
+    --accent-soft: #E1EAE3;
+    --accent-strong: #2C4E40;
+    --gold: #A9791E;
+    --gold-soft: #F4E9CC;
+    --line: #DBDEE0;
+    --line-strong: #C3C8CE;
+    --danger: #A6433B;
+    --danger-soft: #F3E1DF;
+    --shadow: none;
+    --font-serif: 'Noto Serif KR', serif;
+    --font-sans: 'Noto Sans KR', sans-serif;
+    --radius: 3px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg: #12161C;
+      --surface: #191F27;
+      --ink: #EBE8E0;
+      --ink-soft: #ABB3BE;
+      --ink-faint: #74808F;
+      --accent: #6FA98A;
+      --accent-soft: #223129;
+      --accent-strong: #8FC4A6;
+      --gold: #D8B354;
+      --gold-soft: #362C16;
+      --line: #2B333D;
+      --line-strong: #3A424D;
+      --danger: #DE8A82;
+      --danger-soft: #3A2422;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #12161C;
+    --surface: #191F27;
+    --ink: #EBE8E0;
+    --ink-soft: #ABB3BE;
+    --ink-faint: #74808F;
+    --accent: #6FA98A;
+    --accent-soft: #223129;
+    --accent-strong: #8FC4A6;
+    --gold: #D8B354;
+    --gold-soft: #362C16;
+    --line: #2B333D;
+    --line-strong: #3A424D;
+    --danger: #DE8A82;
+    --danger-soft: #3A2422;
+  }
+
+  *{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 32px 20px 80px;
+  }
+  .wrap{ max-width: 980px; margin: 0 auto; }
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 14px;
+    margin-bottom: 28px;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .masthead h1{
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 26px;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .masthead p{
+    margin: 0; color: var(--ink-soft); font-size: 13.5px;
+  }
+  .masthead .today-chip{
+    font-family: var(--font-serif);
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .masthead .today-chip b{ color: var(--ink); font-weight: 700; }
+
+  /* ---------- Section shell ---------- */
+  section.block{ margin-bottom: 34px; }
+  .block-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom: 1px solid var(--line-strong);
+    padding-bottom: 8px; margin-bottom: 14px;
+    gap: 10px; flex-wrap: wrap;
+  }
+  .block-head h2{
+    font-family: var(--font-serif);
+    font-size: 18px; font-weight: 700; margin:0;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .block-head h2 .idx{
+    font-size: 12px; color: var(--accent); font-weight: 700;
+    border: 1px solid var(--accent); border-radius: 2px;
+    padding: 1px 6px;
+  }
+  .block-head .desc{ font-size: 12.5px; color: var(--ink-faint); }
+  .block-nav{ display:flex; align-items:center; gap: 10px; }
+  .block-nav button{
+    background:none; border:1px solid var(--line-strong); color: var(--ink-soft);
+    border-radius: var(--radius); width: 26px; height: 26px; cursor:pointer;
+    font-size: 14px; line-height:1;
+  }
+  .block-nav button:hover{ border-color: var(--accent); color: var(--accent); }
+  .block-nav .range{ font-size: 13px; color: var(--ink-soft); min-width: 96px; text-align:center; }
+
+  /* ---------- Memo input ---------- */
+  .memo-card{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  textarea#memo-input{
+    width: 100%; min-height: 132px; resize: vertical;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px; font-family: var(--font-sans); font-size: 14.5px;
+    color: var(--ink); background: var(--bg);
+  }
+  textarea#memo-input:focus{ outline: 2px solid var(--accent); outline-offset: 1px; }
+  .memo-hint{ font-size: 12px; color: var(--ink-faint); margin: 8px 2px 0; line-height:1.7; }
+  .memo-actions{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top: 12px; gap: 12px; flex-wrap: wrap;
+  }
+  .file-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size: 13px; color: var(--ink-soft); cursor:pointer;
+    border: 1px dashed var(--line-strong); border-radius: var(--radius);
+    padding: 7px 12px;
+  }
+  .file-btn:hover{ border-color: var(--accent); color: var(--accent); }
+  .file-btn input{ display:none; }
+  .pdf-tag{
+    font-size: 12.5px; color: var(--accent-strong); background: var(--accent-soft);
+    border-radius: var(--radius); padding: 3px 8px; display:none; align-items:center; gap:6px;
+  }
+  .pdf-tag.show{ display:inline-flex; }
+  .pdf-tag button{ background:none; border:none; color: inherit; cursor:pointer; font-size:13px; padding:0; }
+
+  button.primary{
+    background: var(--ink); color: var(--bg); border: none;
+    border-radius: var(--radius); padding: 9px 18px; font-size: 14px; font-weight: 500;
+    cursor: pointer; font-family: var(--font-sans);
+  }
+  button.primary:hover{ background: var(--accent-strong); }
+  button.primary:disabled{ opacity:.5; cursor:default; }
+  button.ghost{
+    background:none; border: 1px solid var(--line-strong); color: var(--ink-soft);
+    border-radius: var(--radius); padding: 8px 16px; font-size: 13.5px; cursor:pointer;
+    font-family: var(--font-sans);
+  }
+  button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
+  .status-msg{ font-size: 12.5px; color: var(--ink-faint); min-height: 16px; }
+
+  /* ---------- Review staging list ---------- */
+  #review-panel{ margin-top: 16px; display:none; }
+  #review-panel.show{ display:block; }
+  #review-panel .review-title{ font-size: 13px; color: var(--ink-soft); margin-bottom: 10px; }
+  .review-item{
+    border: 1px solid var(--line); border-left: 3px solid var(--gold);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px;
+    background: var(--gold-soft);
+  }
+  .review-grid{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap: 8px 10px; margin-bottom: 8px;
+  }
+  .review-grid .full{ grid-column: 1 / -1; }
+  .field label{ display:block; font-size: 11px; color: var(--ink-faint); margin-bottom: 3px; }
+  .field input, .field textarea{
+    width:100%; border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 6px 8px; font-size: 13px; font-family: var(--font-sans); background: var(--surface); color: var(--ink);
+  }
+  .field textarea{ min-height: 44px; resize: vertical; }
+  .review-row-actions{ display:flex; justify-content:flex-end; }
+  .review-row-actions button{
+    background:none; border:none; color: var(--danger); font-size: 12.5px; cursor:pointer; padding: 2px 4px;
+  }
+  .review-panel-actions{ display:flex; justify-content:flex-end; gap: 10px; margin-top: 4px; }
+
+  /* ---------- Today list ---------- */
+  .today-empty, .empty-note{
+    color: var(--ink-faint); font-size: 13.5px; padding: 18px 4px; text-align:left;
+  }
+  .today-list{ display:flex; flex-direction:column; gap: 8px; }
+  .today-item{
+    display:grid; grid-template-columns: 88px 1fr auto; gap: 14px; align-items:start;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px; cursor:pointer;
+  }
+  .today-item:hover{ border-color: var(--accent); }
+  .today-time{
+    font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent-strong); font-size: 13.5px; padding-top:1px;
+  }
+  .today-time small{ display:block; font-weight:400; color: var(--ink-faint); font-size: 11px; }
+  .today-main .t-title{ font-weight: 700; font-size: 14.5px; margin-bottom: 3px; }
+  .today-main .t-meta{ font-size: 12.5px; color: var(--ink-soft); }
+  .today-main .t-meta span + span::before{ content: " · "; color: var(--ink-faint); }
+  .today-main .t-content{ font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+  .item-actions{ display:flex; gap: 6px; }
+  .item-actions button{
+    background:none; border: 1px solid var(--line); border-radius: var(--radius);
+    color: var(--ink-faint); font-size: 12px; padding: 4px 9px; cursor:pointer;
+  }
+  .item-actions button:hover{ border-color: var(--ink-soft); color: var(--ink); }
+
+  /* ---------- Weekly table ---------- */
+  .week-scroll{ overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table.week-table{ width: 100%; border-collapse: collapse; min-width: 720px; background: var(--surface); }
+  table.week-table th{
+    font-family: var(--font-serif); font-weight: 700; font-size: 13px;
+    text-align:left; padding: 9px 10px; border-bottom: 1px solid var(--line-strong);
+    border-left: 1px solid var(--line); background: var(--accent-soft); color: var(--accent-strong);
+  }
+  table.week-table th:first-child{ border-left:none; }
+  table.week-table th .wd-date{ display:block; font-weight:400; color: var(--ink-soft); font-size: 11px; margin-top: 2px; }
+  table.week-table th.is-today{ background: var(--gold-soft); color: var(--gold); }
+  table.week-table td{
+    vertical-align: top; border-left: 1px solid var(--line); padding: 8px;
+    min-height: 90px; width: 14.28%;
+  }
+  table.week-table td:first-child{ border-left:none; }
+  table.week-table td.is-today{ background: var(--gold-soft); }
+  .week-chip{
+    background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: var(--radius); padding: 6px 8px; margin-bottom: 6px; cursor:pointer; font-size: 12.5px;
+  }
+  .week-chip:hover{ border-color: var(--accent); }
+  .week-chip .wc-time{ font-variant-numeric: tabular-nums; color: var(--accent-strong); font-weight:700; font-size: 11.5px; }
+  .week-chip .wc-title{ font-weight: 700; margin-top: 1px; }
+  .week-chip .wc-dept{ color: var(--ink-faint); font-size: 11px; margin-top: 1px; }
+  .week-add{
+    font-size: 11.5px; color: var(--ink-faint); border: 1px dashed var(--line-strong);
+    border-radius: var(--radius); text-align:center; padding: 6px 4px; cursor:pointer;
+  }
+  .week-add:hover{ border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Monthly calendar ---------- */
+  .month-grid{
+    display:grid; grid-template-columns: repeat(7, 1fr);
+    border: 1px solid var(--line); border-radius: var(--radius); overflow:hidden;
+  }
+  .month-grid .dow{
+    background: var(--accent-soft); color: var(--accent-strong);
+    font-family: var(--font-serif); font-weight:700; font-size: 12.5px;
+    text-align:center; padding: 7px 0; border-bottom: 1px solid var(--line-strong);
+  }
+  .month-cell{
+    background: var(--surface); border-top: 1px solid var(--line); border-left: 1px solid var(--line);
+    min-height: 96px; padding: 6px; cursor:pointer; position:relative;
+  }
+  .month-grid > .month-cell:nth-child(7n+1){ border-left:none; }
+  .month-cell.outside{ background: var(--bg); }
+  .month-cell.outside .m-date{ color: var(--ink-faint); }
+  .month-cell:hover{ background: var(--accent-soft); }
+  .month-cell .m-date{
+    font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12.5px; color: var(--ink-soft); margin-bottom: 4px;
+  }
+  .month-cell.is-today{ background: var(--gold-soft); }
+  .month-cell.is-today .m-date{
+    color: var(--bg); background: var(--gold); border-radius: 50%;
+    width: 20px; height:20px; display:inline-flex; align-items:center; justify-content:center; font-size: 11.5px;
+  }
+  .m-chip{
+    font-size: 11px; background: var(--accent-soft); color: var(--accent-strong);
+    border-radius: 2px; padding: 2px 5px; margin-bottom: 3px; white-space:nowrap; overflow:hidden;
+    text-overflow: ellipsis;
+  }
+  .m-more{ font-size: 10.5px; color: var(--ink-faint); padding-left: 2px; }
+
+  /* ---------- Modal ---------- */
+  #modal-overlay{
+    display:none; position: fixed; inset:0; background: rgba(20,24,30,.5);
+    align-items:center; justify-content:center; z-index: 50; padding: 20px;
+  }
+  #modal-overlay.show{ display:flex; }
+  #modal{
+    background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 480px;
+    max-height: 88vh; overflow-y:auto; padding: 22px; border: 1px solid var(--line);
+  }
+  #modal h3{ font-family: var(--font-serif); margin: 0 0 14px; font-size: 17px; }
+  #modal .field{ margin-bottom: 12px; }
+  #modal .row2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #modal .modal-actions{ display:flex; justify-content:space-between; margin-top: 16px; }
+  #modal-delete{ color: var(--danger); background:none; border:1px solid var(--danger-soft); border-radius: var(--radius); padding: 8px 14px; cursor:pointer; font-size: 13px; }
+  #modal-delete:hover{ background: var(--danger-soft); }
+  .modal-right{ display:flex; gap: 8px; }
+
+  .toast{
+    position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: var(--bg);
+    padding: 9px 16px; border-radius: var(--radius); font-size: 13px; opacity:0; transform: translateY(6px);
+    transition: opacity .25s ease, transform .25s ease; pointer-events:none; z-index: 60;
+  }
+  .toast.show{ opacity:1; transform: translateY(0); }
+
+  @media (max-width: 600px){
+    .review-grid{ grid-template-columns: 1fr 1fr; }
+    .today-item{ grid-template-columns: 60px 1fr; }
+    .item-actions{ grid-column: 1 / -1; justify-content:flex-end; }
+    #modal .row2{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <h1>교무 수첩</h1>
+      <p>메모 한 줄이 오늘 · 이번 주 · 이번 달 일정표로 정리됩니다.</p>
+    </div>
+    <div class="today-chip" id="masthead-date"></div>
+  </header>
+
+  <!-- 메모 입력 -->
+  <section class="block" id="memo-section">
+    <div class="block-head">
+      <h2><span class="idx">기록</span> 메모장</h2>
+      <span class="desc">두서없이 적어도 날짜 · 시간 · 장소 등을 찾아 정리합니다</span>
+    </div>
+    <div class="memo-card">
+      <textarea id="memo-input" placeholder="예) 10월 15일 2시 강당에서 학예회, 대상 전교생, 담당 김민수&#10;&#10;여러 건을 한 번에 적을 때는 빈 줄로 구분해 주세요.&#10;'제목:' '날짜:' '시간:' '장소:' '대상:' '주관:' '담당:' '내용:' 처럼 항목을 붙이면 더 정확하게 인식합니다."></textarea>
+      <div class="memo-hint">교시로 적어도 됩니다 (예: 3교시, 야간자율1) · 학교 일과 진행표 시간표를 기준으로 자동 환산합니다.</div>
+      <div class="memo-actions">
+        <label class="file-btn">
+          📎 PDF에서 일정 가져오기
+          <input type="file" id="pdf-input" accept="application/pdf">
+        </label>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="status-msg" id="memo-status"></span>
+          <button class="primary" id="parse-btn">정리하기</button>
+        </div>
+      </div>
+      <span class="pdf-tag" id="pdf-tag"><span id="pdf-name"></span><button id="pdf-remove" title="첨부 제거">✕</button></span>
+
+      <div id="review-panel">
+        <div class="review-title">아래 내용대로 정리했습니다. 확인하고 필요한 부분을 고친 뒤 저장하세요.</div>
+        <div id="review-list"></div>
+        <div class="review-panel-actions">
+          <button class="ghost" id="review-cancel">취소</button>
+          <button class="primary" id="review-save">모두 저장</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 오늘 일정 -->
+  <section class="block" id="today-section">
+    <div class="block-head">
+      <h2><span class="idx">Day</span> 오늘 일정</h2>
+      <span class="desc" id="today-date-label"></span>
+    </div>
+    <div id="today-list"></div>
+  </section>
+
+  <!-- 주간업무계획 -->
+  <section class="block" id="week-section">
+    <div class="block-head">
+      <h2><span class="idx">Week</span> 주간업무계획</h2>
+      <div class="block-nav">
+        <button id="week-prev">‹</button>
+        <span class="range" id="week-range"></span>
+        <button id="week-next">›</button>
+      </div>
+    </div>
+    <div class="week-scroll">
+      <table class="week-table" id="week-table"></table>
+    </div>
+  </section>
+
+  <!-- 월중행사 -->
+  <section class="block" id="month-section">
+    <div class="block-head">
+      <h2><span class="idx">Month</span> 월중행사</h2>
+      <div class="block-nav">
+        <button id="month-prev">‹</button>
+        <span class="range" id="month-range"></span>
+        <button id="month-next">›</button>
+      </div>
+    </div>
+    <div class="month-grid" id="month-grid"></div>
+  </section>
+
+  <div style="text-align:right;">
+    <button class="ghost" id="add-new-btn">+ 새 일정 직접 추가</button>
+  </div>
+
+</div>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <h3 id="modal-title">일정 수정</h3>
+    <div class="field"><label>제목</label><input id="m-title" type="text"></div>
+    <div class="row2">
+      <div class="field"><label>날짜</label><input id="m-date" type="date"></div>
+      <div class="field"><label>시간 (교시 입력 가능)</label><input id="m-time" type="text" placeholder="예: 14:00~16:00 또는 3교시"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>장소</label><input id="m-location" type="text"></div>
+      <div class="field"><label>대상</label><input id="m-target" type="text"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>주관부서</label><input id="m-dept" type="text" list="dept-list"></div>
+      <div class="field"><label>담당자</label><input id="m-person" type="text"></div>
+    </div>
+    <datalist id="dept-list">
+      <option value="교무학사부">
+      <option value="1학년부">
+      <option value="회복성장부">
+      <option value="학생안전부">
+      <option value="교육연구부">
+    </datalist>
+    <div class="field"><label>내용</label><textarea id="m-content"></textarea></div>
+    <div class="field"><label>기타사항</label><textarea id="m-note"></textarea></div>
+    <div class="modal-actions">
+      <button id="modal-delete">삭제</button>
+      <div class="modal-right">
+        <button class="ghost" id="modal-cancel">취소</button>
+        <button class="primary" id="modal-save">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ================= 기본 유틸 ================= */
+  const LS_KEY = 'gyomu-schedule-events-v1';
+  const WEEKDAY_KR = ['일','월','화','수','목','금','토'];
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function isoOf(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function addDays(d,n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function parseISO(str){ const [y,m,d] = str.split('-').map(Number); return new Date(y, m-1, d); }
+  function startOfWeek(d){ const day = d.getDay(); const diff = day===0 ? -6 : 1-day; return addDays(new Date(d.getFullYear(),d.getMonth(),d.getDate()), diff); }
+  function todayDateObj(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+  function todayISO(){ return isoOf(todayDateObj()); }
+  function fmtKorean(d, withWeekday){
+    let s = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
+    if(withWeekday) s += ` (${WEEKDAY_KR[d.getDay()]})`;
+    return s;
+  }
+  function newId(){ return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  /* ================= 일과 진행표 (교시 → 시각) ================= */
+  const PERIOD_TIMES = {
+    '0': ['08:30','08:35'],
+    '1': ['08:35','09:25'],
+    '2': ['09:35','10:25'],
+    '3': ['10:35','11:25'],
+    '4': ['11:35','12:25'],
+    '5': ['13:25','14:15'],
+    '6': ['14:25','15:15'],
+    '7': ['15:25','16:15'],
+    '8': ['16:30','17:20'],
+    '9': ['17:25','18:15']
+  };
+  const NIGHT_TIMES = { '1': ['19:10','20:10'], '2': ['20:20','21:30'] };
+
+  function to24(hour, ampm){
+    hour = Number(hour);
+    if(ampm === '오후' && hour < 12) hour += 12;
+    if(ampm === '오전' && hour === 12) hour = 0;
+    return hour;
+  }
+
+  /* ================= 시간 추출 ================= */
+  // 문자열에서 가장 먼저 매치되는 시간 표현을 찾아 {start,end,remainder} 반환. 없으면 start/end 빈 문자열.
+  function extractTime(text){
+    let m;
+
+    // 1) HH:MM ~ HH:MM
+    m = text.match(/([01]?\d|2[0-3]):([0-5]\d)\s*(?:[~\-∼]|부터)\s*([01]?\d|2[0-3]):([0-5]\d)\s*(?:까지)?/);
+    if(m){
+      return { start: pad2(m[1])+':'+m[2], end: pad2(m[3])+':'+m[4], remainder: text.replace(m[0], ' ') };
+    }
+    // 2) N교시 ~ M교시
+    m = text.match(/(\d{1,2})\s*교시\s*(?:[~\-∼]|부터)\s*(\d{1,2})\s*교시\s*(?:까지)?/);
+    if(m && PERIOD_TIMES[m[1]] && PERIOD_TIMES[m[2]]){
+      return { start: PERIOD_TIMES[m[1]][0], end: PERIOD_TIMES[m[2]][1], remainder: text.replace(m[0], ' ') };
+    }
+    // 3) 야간자율N / 야자N
+    m = text.match(/야(?:간자율|자)\s*(\d)/);
+    if(m && NIGHT_TIMES[m[1]]){
+      return { start: NIGHT_TIMES[m[1]][0], end: NIGHT_TIMES[m[1]][1], remainder: text.replace(m[0], ' ') };
+    }
+    // 4) N교시 (단일)
+    m = text.match(/(\d{1,2})\s*교시/);
+    if(m && PERIOD_TIMES[m[1]]){
+      return { start: PERIOD_TIMES[m[1]][0], end: PERIOD_TIMES[m[1]][1], remainder: text.replace(m[0], ' ') };
+    }
+    // 5) 오전/오후 H시(분)? ~ 오전/오후 H시(분)?
+    m = text.match(/(오전|오후)?\s*(\d{1,2})\s*시\s*(?:(\d{1,2})\s*분)?\s*(?:[~\-∼]|부터)\s*(오전|오후)?\s*(\d{1,2})\s*시\s*(?:(\d{1,2})\s*분)?\s*(?:까지)?/);
+    if(m){
+      const ampm1 = m[1] || m[4] || '';
+      const ampm2 = m[4] || m[1] || '';
+      const h1 = to24(m[2], ampm1);
+      const h2 = to24(m[5], ampm2);
+      const min1 = m[3] || '00';
+      const min2 = m[6] || '00';
+      return { start: pad2(h1)+':'+pad2(min1), end: pad2(h2)+':'+pad2(min2), remainder: text.replace(m[0], ' ') };
+    }
+    // 6) 단일 오전/오후 H시(분)?
+    m = text.match(/(오전|오후)?\s*(\d{1,2})\s*시\s*(?:(\d{1,2})\s*분)?/);
+    if(m){
+      const h = to24(m[2], m[1]||'');
+      const min = m[3] || '00';
+      return { start: pad2(h)+':'+pad2(min), end: '', remainder: text.replace(m[0], ' ') };
+    }
+    // 7) 단일 HH:MM
+    m = text.match(/([01]?\d|2[0-3]):([0-5]\d)/);
+    if(m){
+      return { start: pad2(m[1])+':'+m[2], end: '', remainder: text.replace(m[0], ' ') };
+    }
+    return { start:'', end:'', remainder: text };
+  }
+
+  /* ================= 날짜 추출 ================= */
+  function extractDate(text, baseDate){
+    let m;
+    m = text.match(/(20\d{2})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*일?/);
+    if(m){
+      return { value: isoOf(new Date(+m[1], +m[2]-1, +m[3])), remainder: text.replace(m[0], ' ') };
+    }
+    m = text.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+    if(m){
+      const mo = +m[1], d = +m[2];
+      let y = baseDate.getFullYear();
+      let cand = new Date(y, mo-1, d);
+      if((cand - baseDate)/86400000 < -60) y += 1;
+      return { value: isoOf(new Date(y, mo-1, d)), remainder: text.replace(m[0], ' ') };
+    }
+    if(/모레/.test(text)) return { value: isoOf(addDays(baseDate,2)), remainder: text.replace(/모레/, ' ') };
+    if(/내일/.test(text)) return { value: isoOf(addDays(baseDate,1)), remainder: text.replace(/내일/, ' ') };
+    if(/오늘/.test(text)) return { value: isoOf(baseDate), remainder: text.replace(/오늘/, ' ') };
+    m = text.match(/(다음\s*주|이번\s*주)?\s*([일월화수목금토])\s*요일/);
+    if(m){
+      const targetIdx = WEEKDAY_KR.indexOf(m[2]);
+      const cur = baseDate.getDay();
+      let add = (targetIdx - cur + 7) % 7;
+      const prefix = (m[1]||'').replace(/\s/g,'');
+      if(prefix === '다음주') add += 7;
+      return { value: isoOf(addDays(baseDate, add)), remainder: text.replace(m[0], ' ') };
+    }
+    return { value:'', remainder: text };
+  }
+
+  /* ================= 장소/대상/부서/담당 추출 ================= */
+  function extractLocation(text){
+    let m = text.match(/([가-힣0-9A-Za-z()]{1,14})\s*에서/);
+    if(m) return { value: m[1].trim(), remainder: text.replace(m[0], ' ') };
+    m = text.match(/([가-힣0-9A-Za-z()]{1,10}(?:강당|실|운동장|체육관|센터|회의실|교무실|도서관|식당|주차장|교실))/);
+    if(m) return { value: m[1].trim(), remainder: text.replace(m[0], ' ') };
+    return { value:'', remainder: text };
+  }
+
+  function pluckKeywordField(text, keywords){
+    for(const kw of keywords){
+      const re = new RegExp(kw + '\\s*[:：]?\\s*([^,，·\\n]{1,20})');
+      const m = text.match(re);
+      if(m){ return { value: m[1].trim(), remainder: text.replace(m[0], ' ') }; }
+    }
+    return { value:'', remainder: text };
+  }
+
+  const DEPT_MAP = { '국어과':'교무학사부', '수학과':'1학년부', '영어과':'회복성장부', '사회과':'학생안전부', '과학과':'교육연구부' };
+  function applyDeptMapping(fields){
+    if(!fields.dept) return;
+    for(const k in DEPT_MAP){
+      if(fields.dept.includes(k)){
+        const mapped = DEPT_MAP[k];
+        if(!fields.dept.includes(mapped)){
+          fields.note = (fields.note ? fields.note + ' ' : '') + `(주관부서 자동매핑: ${k} → ${mapped})`;
+          fields.dept = mapped;
+        }
+        break;
+      }
+    }
+  }
+
+  /* ================= 라벨(제목:/날짜:/시간: ...) 인식 ================= */
+  const LABEL_MAP = {
+    '제목':'title', '타이틀':'title',
+    '날짜':'date', '일자':'date',
+    '일시':'datetime',
+    '시간':'time',
+    '장소':'location', '위치':'location',
+    '대상':'target',
+    '주관':'dept', '부서':'dept', '주관부서':'dept',
+    '담당':'person', '담당자':'person',
+    '내용':'content', '설명':'content',
+    '기타':'note', '비고':'note', '기타사항':'note'
+  };
+
+  function blankFields(){
+    return { title:'', date:'', start:'', end:'', timeLabel:'', location:'', target:'', dept:'', person:'', content:'', note:'' };
+  }
+
+  function parseBlock(block, baseDate){
+    const fields = blankFields();
+    const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
+    const leftover = [];
+    let hasLabel = false;
+
+    for(const line of lines){
+      const m = line.match(/^([가-힣]{1,6})\s*[:：]\s*(.*)$/);
+      const key = m && LABEL_MAP[m[1]];
+      if(key){
+        hasLabel = true;
+        const value = m[2].trim();
+        if(key === 'datetime'){
+          const d = extractDate(value, baseDate);
+          const t = extractTime(d.remainder);
+          if(d.value) fields.date = d.value;
+          if(t.start){ fields.start = t.start; fields.end = t.end; }
+        } else if(key === 'time'){
+          const t = extractTime(value);
+          if(t.start){ fields.start = t.start; fields.end = t.end; }
+          else fields.timeLabel = value;
+        } else if(key === 'date'){
+          const d = extractDate(value, baseDate);
+          fields.date = d.value || value;
+        } else {
+          fields[key] = fields[key] ? fields[key] + ' ' + value : value;
+        }
+      } else if(line){
+        leftover.push(line);
+      }
+    }
+
+    if(hasLabel){
+      if(leftover.length){
+        if(!fields.title) fields.title = leftover.shift();
+        if(leftover.length) fields.content = (fields.content ? fields.content + '\n' : '') + leftover.join('\n');
+      }
+      if(!fields.date || (!fields.start && !fields.timeLabel)){
+        const combined = [fields.title, fields.content].join(' ');
+        if(!fields.date){ const d = extractDate(combined, baseDate); if(d.value) fields.date = d.value; }
+        if(!fields.start && !fields.timeLabel){ const t = extractTime(combined); if(t.start){ fields.start=t.start; fields.end=t.end; } }
+      }
+    } else {
+      let text = block.replace(/\n/g, ' ');
+      const d = extractDate(text, baseDate); fields.date = d.value; text = d.remainder;
+      const t = extractTime(text); fields.start = t.start; fields.end = t.end; text = t.remainder;
+      const loc = extractLocation(text); fields.location = loc.value; text = loc.remainder;
+      const tg = pluckKeywordField(text, ['대상']); fields.target = tg.value; text = tg.remainder;
+      const dp = pluckKeywordField(text, ['주관부서','주관','부서']); fields.dept = dp.value; text = dp.remainder;
+      const ps = pluckKeywordField(text, ['담당자','담당']); fields.person = ps.value; text = ps.remainder;
+
+      text = text.replace(/^[\s,，·:：]+|[\s,，·]+$/g, '').trim();
+      if(!text){
+        fields.title = '새 일정';
+      } else {
+        const sm = text.match(/^(.{1,40}?)[.,，、]\s*(.*)$/s);
+        if(sm && sm[2].trim()){ fields.title = sm[1].trim(); fields.content = sm[2].trim(); }
+        else { fields.title = text.length > 40 ? text.slice(0,40) : text; if(text.length>40) fields.content = text; }
+      }
+    }
+
+    if(!fields.date) fields.date = isoOf(baseDate);
+    if(!fields.timeLabel && fields.start) fields.timeLabel = fields.end ? `${fields.start}~${fields.end}` : fields.start;
+    applyDeptMapping(fields);
+    return fields;
+  }
+
+  function parseMemo(text){
+    const pre = text.replace(/^\s*[-*]{3,}\s*$/gm, '\n\n');
+    const blocks = pre.split(/\n\s*\n/).map(b=>b.trim()).filter(Boolean);
+    const baseDate = todayDateObj();
+    return blocks.map(b => parseBlock(b, baseDate));
+  }
+
+  /* ================= 저장/불러오기 ================= */
+  let events = [];
+  try{ const raw = localStorage.getItem(LS_KEY); events = raw ? JSON.parse(raw) : []; }catch(e){ events = []; }
+
+  function saveEvents(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(events)); showToast('저장되었습니다'); }
+    catch(e){ showToast('저장에 실패했습니다 (브라우저 저장공간을 확인해 주세요)'); }
+  }
+
+  /* ================= 토스트 ================= */
+  let toastTimer = null;
+  function showToast(msg){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> el.classList.remove('show'), 1800);
+  }
+
+  /* ================= 렌더링 ================= */
+  function eventsOn(dateISO){
+    return events.filter(e => e.date === dateISO).sort((a,b)=> (a.start||'99:99').localeCompare(b.start||'99:99'));
+  }
+
+  function renderToday(){
+    const list = document.getElementById('today-list');
+    const items = eventsOn(todayISO());
+    document.getElementById('today-date-label').textContent = fmtKorean(todayDateObj(), true);
+    if(!items.length){ list.innerHTML = '<div class="today-empty">오늘 등록된 일정이 없습니다.</div>'; return; }
+    list.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'today-list';
+    items.forEach(ev=>{
+      const row = document.createElement('div');
+      row.className = 'today-item';
+      const meta = [ev.location, ev.target, ev.dept, ev.person].filter(Boolean).map(v=>`<span>${escapeHtml(v)}</span>`).join('');
+      row.innerHTML = `
+        <div class="today-time">${ev.start || '시간'}${ev.end ? '<small>~'+ev.end+'</small>' : (ev.timeLabel && !ev.start ? '<small>'+escapeHtml(ev.timeLabel)+'</small>' : '')}</div>
+        <div class="today-main">
+          <div class="t-title">${escapeHtml(ev.title || '제목 없음')}</div>
+          ${meta ? `<div class="t-meta">${meta}</div>` : ''}
+          ${ev.content ? `<div class="t-content">${escapeHtml(ev.content)}</div>` : ''}
+        </div>
+        <div class="item-actions">
+          <button data-act="edit">수정</button>
+          <button data-act="del">삭제</button>
+        </div>`;
+      row.addEventListener('click', (ev2)=>{ if(ev2.target.dataset.act) return; openModal(ev.id); });
+      row.querySelector('[data-act="edit"]').addEventListener('click', ()=> openModal(ev.id));
+      row.querySelector('[data-act="del"]').addEventListener('click', ()=> quickDelete(ev.id));
+      wrap.appendChild(row);
+    });
+    list.appendChild(wrap);
+  }
+
+  let weekAnchor = startOfWeek(todayDateObj());
+  function renderWeek(){
+    const days = Array.from({length:7}, (_,i)=> addDays(weekAnchor,i));
+    document.getElementById('week-range').textContent =
+      `${days[0].getMonth()+1}/${days[0].getDate()} ~ ${days[6].getMonth()+1}/${days[6].getDate()}`;
+
+    const table = document.getElementById('week-table');
+    const tIso = todayISO();
+    let thead = '<thead><tr>' + days.map(d=>{
+      const iso = isoOf(d);
+      return `<th class="${iso===tIso?'is-today':''}">${WEEKDAY_KR[d.getDay()]}<span class="wd-date">${d.getMonth()+1}/${d.getDate()}</span></th>`;
+    }).join('') + '</tr></thead>';
+
+    let tbody = '<tbody><tr>' + days.map(d=>{
+      const iso = isoOf(d);
+      const items = eventsOn(iso);
+      const chips = items.map(ev => `
+        <div class="week-chip" data-id="${ev.id}">
+          <div class="wc-time">${ev.start || (ev.timeLabel||'시간 미정')}</div>
+          <div class="wc-title">${escapeHtml(ev.title || '제목 없음')}</div>
+          ${(ev.dept||ev.person) ? `<div class="wc-dept">${escapeHtml([ev.dept,ev.person].filter(Boolean).join(' · '))}</div>` : ''}
+        </div>`).join('');
+      return `<td class="${iso===tIso?'is-today':''}" data-date="${iso}">${chips}<div class="week-add" data-date="${iso}">+ 일정 추가</div></td>`;
+    }).join('') + '</tr></tbody>';
+
+    table.innerHTML = thead + tbody;
+    table.querySelectorAll('.week-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=> openModal(chip.dataset.id));
+    });
+    table.querySelectorAll('.week-add').forEach(btn=>{
+      btn.addEventListener('click', ()=> openModal(null, btn.dataset.date));
+    });
+  }
+
+  let monthAnchor = (()=>{ const n = todayDateObj(); return new Date(n.getFullYear(), n.getMonth(), 1); })();
+  function renderMonth(){
+    document.getElementById('month-range').textContent = `${monthAnchor.getFullYear()}년 ${monthAnchor.getMonth()+1}월`;
+    const grid = document.getElementById('month-grid');
+    grid.innerHTML = WEEKDAY_KR.map(w=>`<div class="dow">${w}</div>`).join('');
+
+    const firstOfMonth = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), 1);
+    const gridStart = startOfWeek(firstOfMonth);
+    const tIso = todayISO();
+
+    for(let i=0;i<42;i++){
+      const d = addDays(gridStart, i);
+      const iso = isoOf(d);
+      const outside = d.getMonth() !== monthAnchor.getMonth();
+      if(outside && i >= 35) continue; // 마지막 주가 완전히 다음달이면 생략
+      const items = eventsOn(iso);
+      const cell = document.createElement('div');
+      cell.className = 'month-cell' + (outside ? ' outside' : '') + (iso===tIso ? ' is-today' : '');
+      cell.dataset.date = iso;
+      const shown = items.slice(0,3).map(ev=>`<div class="m-chip" data-id="${ev.id}">${escapeHtml(ev.title||'제목 없음')}</div>`).join('');
+      const more = items.length > 3 ? `<div class="m-more">+${items.length-3}개 더</div>` : '';
+      cell.innerHTML = `<div class="m-date">${d.getDate()}</div>${shown}${more}`;
+      grid.appendChild(cell);
+    }
+
+    grid.querySelectorAll('.m-chip').forEach(chip=>{
+      chip.addEventListener('click', (e)=>{ e.stopPropagation(); openModal(chip.dataset.id); });
+    });
+    grid.querySelectorAll('.month-cell').forEach(cell=>{
+      cell.addEventListener('click', ()=> openModal(null, cell.dataset.date));
+    });
+  }
+
+  function renderAll(){ renderToday(); renderWeek(); renderMonth(); }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /* ================= 모달 ================= */
+  let currentEditId = null;
+  function openModal(id, prefillDate){
+    currentEditId = id;
+    const ov = document.getElementById('modal-overlay');
+    const del = document.getElementById('modal-delete');
+    if(id){
+      const ev = events.find(e=>e.id===id);
+      if(!ev) return;
+      document.getElementById('modal-title').textContent = '일정 수정';
+      document.getElementById('m-title').value = ev.title || '';
+      document.getElementById('m-date').value = ev.date || '';
+      document.getElementById('m-time').value = ev.timeLabel || (ev.start ? (ev.end ? ev.start+'~'+ev.end : ev.start) : '');
+      document.getElementById('m-location').value = ev.location || '';
+      document.getElementById('m-target').value = ev.target || '';
+      document.getElementById('m-dept').value = ev.dept || '';
+      document.getElementById('m-person').value = ev.person || '';
+      document.getElementById('m-content').value = ev.content || '';
+      document.getElementById('m-note').value = ev.note || '';
+      del.style.display = '';
+    } else {
+      document.getElementById('modal-title').textContent = '새 일정';
+      document.getElementById('m-title').value = '';
+      document.getElementById('m-date').value = prefillDate || todayISO();
+      document.getElementById('m-time').value = '';
+      document.getElementById('m-location').value = '';
+      document.getElementById('m-target').value = '';
+      document.getElementById('m-dept').value = '';
+      document.getElementById('m-person').value = '';
+      document.getElementById('m-content').value = '';
+      document.getElementById('m-note').value = '';
+      del.style.display = 'none';
+    }
+    ov.classList.add('show');
+  }
+  function closeModal(){ document.getElementById('modal-overlay').classList.remove('show'); currentEditId = null; }
+
+  function normalizeTimeInput(text){
+    text = (text||'').trim();
+    if(!text) return { start:'', end:'', label:'' };
+    const t = extractTime(text);
+    return { start: t.start, end: t.end, label: text };
+  }
+
+  document.getElementById('modal-save').addEventListener('click', ()=>{
+    const t = normalizeTimeInput(document.getElementById('m-time').value);
+    const fields = {
+      title: document.getElementById('m-title').value.trim() || '제목 없음',
+      date: document.getElementById('m-date').value || todayISO(),
+      start: t.start, end: t.end, timeLabel: t.label,
+      location: document.getElementById('m-location').value.trim(),
+      target: document.getElementById('m-target').value.trim(),
+      dept: document.getElementById('m-dept').value.trim(),
+      person: document.getElementById('m-person').value.trim(),
+      content: document.getElementById('m-content').value.trim(),
+      note: document.getElementById('m-note').value.trim()
+    };
+    if(currentEditId){
+      const idx = events.findIndex(e=>e.id===currentEditId);
+      if(idx>-1) events[idx] = Object.assign({id:currentEditId}, fields);
+    } else {
+      events.push(Object.assign({id:newId()}, fields));
+    }
+    saveEvents(); renderAll(); closeModal();
+  });
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='modal-overlay') closeModal(); });
+  document.getElementById('modal-delete').addEventListener('click', ()=>{
+    if(currentEditId && confirm('이 일정을 삭제할까요?')){
+      events = events.filter(e=>e.id!==currentEditId);
+      saveEvents(); renderAll(); closeModal();
+    }
+  });
+  function quickDelete(id){
+    if(confirm('이 일정을 삭제할까요?')){
+      events = events.filter(e=>e.id!==id);
+      saveEvents(); renderAll();
+    }
+  }
+
+  /* ================= 메모 정리(파싱) & 검토 패널 ================= */
+  let stagedEvents = [];
+  function renderReviewPanel(){
+    const panel = document.getElementById('review-panel');
+    const list = document.getElementById('review-list');
+    if(!stagedEvents.length){ panel.classList.remove('show'); list.innerHTML=''; return; }
+    list.innerHTML = stagedEvents.map((f, idx)=>`
+      <div class="review-item" data-idx="${idx}">
+        <div class="review-grid">
+          <div class="field"><label>제목</label><input data-f="title" value="${escapeAttr(f.title)}"></div>
+          <div class="field"><label>날짜</label><input type="date" data-f="date" value="${escapeAttr(f.date)}"></div>
+          <div class="field"><label>시간</label><input data-f="time" value="${escapeAttr(f.timeLabel)}" placeholder="예: 14:00~16:00"></div>
+          <div class="field"><label>장소</label><input data-f="location" value="${escapeAttr(f.location)}"></div>
+          <div class="field"><label>대상</label><input data-f="target" value="${escapeAttr(f.target)}"></div>
+          <div class="field"><label>주관부서</label><input data-f="dept" value="${escapeAttr(f.dept)}" list="dept-list"></div>
+          <div class="field"><label>담당자</label><input data-f="person" value="${escapeAttr(f.person)}"></div>
+          <div class="field full"><label>내용</label><textarea data-f="content">${escapeHtml(f.content)}</textarea></div>
+          <div class="field full"><label>기타사항</label><textarea data-f="note">${escapeHtml(f.note)}</textarea></div>
+        </div>
+        <div class="review-row-actions"><button data-remove="${idx}">이 항목 제외하기</button></div>
+      </div>
+    `).join('');
+    panel.classList.add('show');
+    list.querySelectorAll('[data-remove]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        stagedEvents.splice(Number(btn.dataset.remove),1);
+        renderReviewPanel();
+      });
+    });
+  }
+  function escapeAttr(s){ return escapeHtml(s||'').replace(/"/g,'&quot;'); }
+
+  document.getElementById('parse-btn').addEventListener('click', ()=>{
+    const text = document.getElementById('memo-input').value.trim();
+    const status = document.getElementById('memo-status');
+    if(!text){ status.textContent = '메모를 입력해 주세요.'; return; }
+    stagedEvents = parseMemo(text);
+    status.textContent = `${stagedEvents.length}건을 찾았습니다. 아래에서 확인해 주세요.`;
+    renderReviewPanel();
+  });
+
+  document.getElementById('review-cancel').addEventListener('click', ()=>{
+    stagedEvents = [];
+    renderReviewPanel();
+    document.getElementById('memo-status').textContent = '';
+  });
+
+  document.getElementById('review-save').addEventListener('click', ()=>{
+    const items = Array.from(document.querySelectorAll('#review-list .review-item'));
+    let saved = 0;
+    items.forEach(item=>{
+      const get = (f)=> item.querySelector(`[data-f="${f}"]`).value.trim();
+      const t = normalizeTimeInput(get('time'));
+      events.push({
+        id: newId(),
+        title: get('title') || '제목 없음',
+        date: get('date') || todayISO(),
+        start: t.start, end: t.end, timeLabel: t.label,
+        location: get('location'), target: get('target'),
+        dept: get('dept'), person: get('person'),
+        content: get('content'), note: get('note')
+      });
+      saved++;
+    });
+    saveEvents(); renderAll();
+    stagedEvents = [];
+    renderReviewPanel();
+    document.getElementById('memo-input').value = '';
+    document.getElementById('memo-status').textContent = '';
+    hidePdfTag();
+    showToast(`${saved}건 저장되었습니다`);
+  });
+
+  /* ================= PDF 첨부 ================= */
+  function hidePdfTag(){ document.getElementById('pdf-tag').classList.remove('show'); }
+  document.getElementById('pdf-remove').addEventListener('click', hidePdfTag);
+
+  document.getElementById('pdf-input').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const status = document.getElementById('memo-status');
+    status.textContent = 'PDF에서 글자를 읽는 중입니다…';
+    try{
+      const buf = await file.arrayBuffer();
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+      const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+      let fullText = '';
+      for(let p=1; p<=pdf.numPages; p++){
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        fullText += content.items.map(it=>it.str).join(' ') + '\n\n';
+      }
+      const ta = document.getElementById('memo-input');
+      ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + fullText.trim();
+      document.getElementById('pdf-name').textContent = file.name;
+      document.getElementById('pdf-tag').classList.add('show');
+      status.textContent = '메모장에 PDF 내용을 옮겨 담았습니다. 필요한 부분만 남기고 정리하기를 눌러주세요.';
+    } catch(err){
+      status.textContent = 'PDF를 읽지 못했습니다. 글자가 포함된 PDF인지 확인해 주세요.';
+    }
+    e.target.value = '';
+  });
+
+  /* ================= 새 일정 직접 추가 / 네비게이션 ================= */
+  document.getElementById('add-new-btn').addEventListener('click', ()=> openModal(null));
+  document.getElementById('week-prev').addEventListener('click', ()=>{ weekAnchor = addDays(weekAnchor,-7); renderWeek(); });
+  document.getElementById('week-next').addEventListener('click', ()=>{ weekAnchor = addDays(weekAnchor, 7); renderWeek(); });
+  document.getElementById('month-prev').addEventListener('click', ()=>{ monthAnchor = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth()-1, 1); renderMonth(); });
+  document.getElementById('month-next').addEventListener('click', ()=>{ monthAnchor = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth()+1, 1); renderMonth(); });
+
+  /* ================= 초기화 ================= */
+  document.getElementById('masthead-date').innerHTML = `<b>${fmtKorean(todayDateObj())}</b> ${WEEKDAY_KR[todayDateObj().getDay()]}요일`;
+  renderAll();
+})();
+</script>
+</body>
+</html>
