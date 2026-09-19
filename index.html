@@ -306,6 +306,25 @@
     background:var(--bad); color:#fff; font-size:16px; cursor:pointer;
   }
   .vocab-actions{ display:flex; gap:6px; flex:none; }
+  .vocab-item{ flex-wrap:wrap; }
+  .vocab-manage-row{ display:flex; gap:10px; margin-top:6px; }
+  .vocab-manage-row button{
+    background:none; border:none; color:var(--ink-soft); font-size:12px; cursor:pointer;
+    padding:2px 0; display:flex; align-items:center; gap:3px;
+  }
+  .vocab-manage-row button:hover{ color:var(--ink); }
+  .vocab-manage-row .del-word{ color:var(--bad); }
+  .vocab-edit-form{ display:flex; flex-direction:column; gap:6px; flex:1; }
+  .vocab-edit-form input{
+    padding:9px 10px; border-radius:10px; border:1px solid var(--line);
+    background:var(--bg); color:var(--ink); font-size:13px;
+  }
+  .vocab-edit-form .edit-btn-row{ display:flex; gap:8px; }
+  .vocab-edit-form .edit-btn-row button{
+    flex:1; padding:8px; border-radius:10px; border:none; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .vocab-edit-form .save-btn{ background:var(--primary); color:var(--primary-ink); }
+  .vocab-edit-form .cancel-btn{ background:var(--surface-2); color:var(--ink-soft); }
 
   /* study timer */
   .timer-card{ text-align:center; padding:30px 16px; }
@@ -923,6 +942,8 @@
   }
 
   /* ================= VOCAB ================= */
+  let vocabEditingId = null;
+
   function renderVocab(){
     document.getElementById('vocab-count-label').textContent = `단어 ${vocab.length}개`;
     const wrap = document.getElementById('vocab-list');
@@ -938,11 +959,49 @@
     sorted.forEach(v=>{
       const row = document.createElement('div');
       row.className = 'vocab-item';
+
+      if(vocabEditingId === v.id){
+        const formWrap = document.createElement('div');
+        formWrap.className = 'vocab-edit-form';
+        formWrap.innerHTML = `
+          <input type="text" class="edit-word-input" value="${escapeHtml(v.word)}" placeholder="단어">
+          <input type="text" class="edit-meaning-input" value="${escapeHtml(v.meaning)}" placeholder="뜻">
+          <div class="edit-btn-row">
+            <button class="cancel-btn">취소</button>
+            <button class="save-btn">저장</button>
+          </div>
+        `;
+        row.appendChild(formWrap);
+        wrap.appendChild(row);
+
+        const wordInput = formWrap.querySelector('.edit-word-input');
+        const meaningInput = formWrap.querySelector('.edit-meaning-input');
+        formWrap.querySelector('.cancel-btn').addEventListener('click', ()=>{
+          vocabEditingId = null;
+          renderVocab();
+        });
+        formWrap.querySelector('.save-btn').addEventListener('click', ()=>{
+          const newWord = wordInput.value.trim();
+          const newMeaning = meaningInput.value.trim();
+          if(!newWord || !newMeaning) return;
+          v.word = newWord;
+          v.meaning = newMeaning;
+          saveVocab();
+          vocabEditingId = null;
+          renderVocab();
+        });
+        return;
+      }
+
       row.innerHTML = `
         <div style="flex:1;">
           <div class="vocab-word">${escapeHtml(v.word)}</div>
           <div class="vocab-meaning blurred" data-id="${v.id}">${escapeHtml(v.meaning)}</div>
           <button class="reveal-btn" data-reveal="${v.id}">뜻 보기</button>
+          <div class="vocab-manage-row">
+            <button class="edit-word" data-edit="${v.id}">✎ 수정</button>
+            <button class="del-word" data-del="${v.id}">🗑 삭제</button>
+          </div>
         </div>
         <div class="vocab-count">${v.count}회</div>
       `;
@@ -979,6 +1038,18 @@
       revealBtn.addEventListener('click', ()=>{
         const isBlurred = meaningEl.classList.toggle('blurred');
         revealBtn.textContent = isBlurred ? '뜻 보기' : '뜻 가리기';
+      });
+
+      row.querySelector(`[data-edit="${v.id}"]`).addEventListener('click', ()=>{
+        vocabEditingId = v.id;
+        renderVocab();
+      });
+      row.querySelector(`[data-del="${v.id}"]`).addEventListener('click', ()=>{
+        if(confirm(`"${v.word}" 단어를 삭제할까요?`)){
+          vocab = vocab.filter(item=>item.id !== v.id);
+          saveVocab();
+          renderVocab();
+        }
       });
     });
   }
