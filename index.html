@@ -436,6 +436,28 @@
   .mode-opt .m-title{ font-weight:700; font-size:14px; margin-bottom:4px; }
   .mode-opt .m-sub{ font-size:11px; color:var(--ink-soft); }
   .mode-opt.active{ border-color:var(--primary); }
+  .word-pick-header{
+    display:flex; justify-content:space-between; align-items:center;
+    margin:16px 0 8px; font-size:12px; color:var(--ink-soft);
+  }
+  .word-pick-actions{ display:flex; gap:8px; }
+  .word-pick-actions button{
+    background:var(--surface-2); border:none; color:var(--ink); font-size:11px;
+    border-radius:8px; padding:4px 8px; cursor:pointer;
+  }
+  .word-pick-list{
+    max-height:180px; overflow-y:auto; border:1px solid var(--line);
+    border-radius:14px; padding:6px 10px; margin-bottom:16px; background:var(--surface);
+  }
+  .word-pick-row{
+    display:flex; align-items:center; gap:8px; padding:8px 2px;
+    border-bottom:1px solid var(--line); font-size:13px; cursor:pointer;
+  }
+  .word-pick-row:last-child{ border-bottom:none; }
+  .word-pick-row .wp-word{ font-weight:700; flex:none; }
+  .word-pick-row .wp-meaning{ color:var(--ink-soft); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .word-pick-row .wp-count{ color:var(--ink-soft); flex:none; font-size:11px; }
+  .word-pick{ flex:none; width:16px; height:16px; accent-color:var(--primary); }
   .quiz-progress{ font-size:12px; color:var(--ink-soft); margin-bottom:8px; }
   .quiz-q{
     background:var(--surface); border-radius:16px; padding:22px 16px;
@@ -534,6 +556,17 @@
         </div>
       </div>
     </div>
+
+    <div class="page hidden">
+      <div class="section-title">기기 간 공유 (구글 시트 연동)</div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="add-row" style="margin-bottom:8px;">
+          <input type="text" id="cloud-url-input" placeholder="구글 시트 웹 앱 주소(URL)를 붙여넣으세요">
+        </div>
+        <button class="primary-btn" id="cloud-connect-btn" style="width:100%;">연결하기</button>
+        <div id="cloud-status" style="margin-top:10px; font-size:12px; color:var(--ink-soft);">아직 연결되지 않았어요</div>
+      </div>
+    </div>
   </section>
 
   <!-- ===== VOCAB ===== -->
@@ -615,6 +648,101 @@
   const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const todayKey = () => dateKey(new Date());
 
+  /* ---------- cross-device sync (구글 시트 웹 앱 백엔드) ---------- */
+  const DEFAULT_CLOUD_URL = 'https://script.google.com/macros/s/AKfycbyzJkwaFNaEElvCsAYsbwpTOCwE8_L1DnTWRGeuhfgJwyRL3txVHXwb-zSdx2qfk2xC/exec';
+  let cloudUrl = LS.get('planner_cloud_url', DEFAULT_CLOUD_URL);
+  let cloudPushTimer = null;
+  let cloudPollTimer = null;
+  let cloudPulling = false;
+
+  function setCloudStatus(msg){
+    const el = document.getElementById('cloud-status');
+    if(el) el.textContent = msg;
+  }
+
+  function refreshAllScreens(){
+    if(typeof renderCalendar==='function') renderCalendar();
+    if(typeof renderWeekRow==='function') renderWeekRow();
+    if(typeof renderDayPanel==='function') renderDayPanel();
+    if(typeof renderVocab==='function') renderVocab();
+    if(typeof renderRecords==='function') renderRecords();
+    if(typeof renderSelects==='function') renderSelects();
+    if(typeof renderStudySelect==='function') renderStudySelect();
+  }
+
+  function buildFullState(){
+    return {
+      schedule, vocab, study, subjectOptions, taskOptions,
+      updatedAt: Date.now()
+    };
+  }
+
+  function applyFullState(state){
+    if(!state) return;
+    if(state.schedule) schedule = state.schedule;
+    if(state.vocab) vocab = state.vocab;
+    if(state.study) study = state.study;
+    if(Array.isArray(state.subjectOptions) && state.subjectOptions.length) subjectOptions = state.subjectOptions;
+    if(Array.isArray(state.taskOptions) && state.taskOptions.length) taskOptions = state.taskOptions;
+    LS.set('planner_schedule', schedule);
+    LS.set('planner_vocab', vocab);
+    LS.set('planner_study', study);
+    LS.set('planner_subjects', subjectOptions);
+    LS.set('planner_tasks', taskOptions);
+    refreshAllScreens();
+  }
+
+  async function pushToCloud(){
+    if(!cloudUrl) return;
+    try{
+      await fetch(cloudUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(buildFullState())
+      });
+      setCloudStatus('마지막 저장: ' + new Date().toLocaleTimeString());
+    }catch(e){
+      setCloudStatus('저장 실패 · 인터넷 연결이나 주소를 확인해주세요');
+    }
+  }
+
+  function pushToCloudDebounced(){
+    if(cloudPushTimer) clearTimeout(cloudPushTimer);
+    cloudPushTimer = setTimeout(pushToCloud, 400);
+  }
+
+  async function pullFromCloud(){
+    if(!cloudUrl || cloudPulling) return;
+    cloudPulling = true;
+    try{
+      const sep = cloudUrl.includes('?') ? '&' : '?';
+      const res = await fetch(cloudUrl + sep + '_=' + Date.now());
+      const data = await res.json();
+      if(data && typeof data === 'object'){
+        applyFullState(data);
+        setCloudStatus('연결됨 · 마지막 동기화 ' + new Date().toLocaleTimeString());
+      }
+    }catch(e){
+      setCloudStatus('동기화 실패 · 인터넷 연결이나 주소를 확인해주세요');
+    }
+    cloudPulling = false;
+  }
+
+  function startCloudSync(){
+    if(!cloudUrl) return;
+    setCloudStatus('연결 확인 중...');
+    pullFromCloud();
+    if(cloudPollTimer) clearInterval(cloudPollTimer);
+    cloudPollTimer = setInterval(pullFromCloud, 8000);
+  }
+
+  // 기존 개별 호출부와의 호환을 위한 래퍼: 인자와 무관하게 전체 상태를 저장
+  function syncScheduleDoc(){ pushToCloudDebounced(); }
+  function syncVocabDoc(){ pushToCloudDebounced(); }
+  function deleteVocabDoc(){ pushToCloudDebounced(); }
+  function syncStudyDoc(){ pushToCloudDebounced(); }
+  function syncDropdowns(){ pushToCloudDebounced(); }
+
   /* ---------- state ---------- */
   let theme = LS.get('planner_theme', 'light');
   let schedule = LS.get('planner_schedule', {});      // { 'YYYY-MM-DD': [{id,text,checked}] }
@@ -624,7 +752,7 @@
   let calViewDate = new Date();
   let selectedDate = new Date();
 
-  function saveSchedule(){ LS.set('planner_schedule', schedule); }
+  function saveSchedule(dk){ LS.set('planner_schedule', schedule); if(dk) syncScheduleDoc(dk); }
   function saveVocab(){ LS.set('planner_vocab', vocab); }
   function saveStudy(){ LS.set('planner_study', study); }
 
@@ -794,7 +922,7 @@
       chk.textContent = item.checked ? '✓' : '';
       chk.addEventListener('click', ()=>{
         item.checked = !item.checked;
-        saveSchedule();
+        saveSchedule(key);
         renderDayPanel();
         renderCalendar();
         renderWeekRow();
@@ -807,7 +935,7 @@
       del.textContent = '✕';
       del.addEventListener('click', ()=>{
         schedule[key] = schedule[key].filter(i=>i.id!==item.id);
-        saveSchedule();
+        saveSchedule(key);
         renderDayPanel();
         renderCalendar();
         renderWeekRow();
@@ -824,8 +952,8 @@
   let subjectOptions = LS.get('planner_subjects', ['국어','영어','수학','과학','사회']);
   let taskOptions = LS.get('planner_tasks', ['교과서 예습','문제집 풀기','오답노트 정리','단어 암기','복습']);
 
-  function saveSubjectOptions(){ LS.set('planner_subjects', subjectOptions); }
-  function saveTaskOptions(){ LS.set('planner_tasks', taskOptions); }
+  function saveSubjectOptions(){ LS.set('planner_subjects', subjectOptions); syncDropdowns(); }
+  function saveTaskOptions(){ LS.set('planner_tasks', taskOptions); syncDropdowns(); }
 
   function fillSelect(selectEl, options){
     const prevValue = selectEl.value;
@@ -920,7 +1048,7 @@
     const key = dateKey(selectedDate);
     if(!schedule[key]) schedule[key] = [];
     schedule[key].push({id:'t'+Date.now()+Math.random().toString(16).slice(2), text, checked:false});
-    saveSchedule();
+    saveSchedule(key);
     renderDayPanel();
     renderCalendar();
     renderWeekRow();
@@ -934,7 +1062,7 @@
     const target = items.find(it=>it.id===todoId);
     if(target && !target.checked){
       target.checked = true;
-      saveSchedule();
+      saveSchedule(dateStr);
       if(dateKey(selectedDate)===dateStr){ renderDayPanel(); }
       renderCalendar();
       renderWeekRow();
@@ -987,6 +1115,7 @@
           v.word = newWord;
           v.meaning = newMeaning;
           saveVocab();
+          syncVocabDoc(v);
           vocabEditingId = null;
           renderVocab();
         });
@@ -1015,6 +1144,7 @@
       wrongBtn.addEventListener('click', ()=>{
         v.count -= 1;
         saveVocab();
+        syncVocabDoc(v);
         renderVocab();
       });
 
@@ -1025,6 +1155,7 @@
       btn.addEventListener('click', ()=>{
         v.count += 1;
         saveVocab();
+        syncVocabDoc(v);
         renderVocab();
       });
 
@@ -1048,6 +1179,7 @@
         if(confirm(`"${v.word}" 단어를 삭제할까요?`)){
           vocab = vocab.filter(item=>item.id !== v.id);
           saveVocab();
+          deleteVocabDoc(v.id);
           renderVocab();
         }
       });
@@ -1064,8 +1196,10 @@
     const word = wIn.value.trim();
     const meaning = mIn.value.trim();
     if(!word || !meaning) return;
-    vocab.push({id:'v'+Date.now()+Math.random().toString(16).slice(2), word, meaning, count:0});
+    const newEntry = {id:'v'+Date.now()+Math.random().toString(16).slice(2), word, meaning, count:0};
+    vocab.push(newEntry);
     saveVocab();
+    syncVocabDoc(newEntry);
     wIn.value=''; mIn.value='';
     renderVocab();
   });
@@ -1083,6 +1217,7 @@
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'test-overlay';
+    const sortedForPick = [...vocab].sort((a,b)=>a.count-b.count);
     overlay.innerHTML = `
       <div class="modal-sheet">
         <button class="close-x" id="test-close">✕</button>
@@ -1097,6 +1232,23 @@
             <div class="m-sub">뜻을 보고 철자를 입력</div>
           </div>
         </div>
+        <div class="word-pick-header">
+          <span>테스트할 단어 선택 (${sortedForPick.length}개 중)</span>
+          <div class="word-pick-actions">
+            <button type="button" id="pick-all">전체 선택</button>
+            <button type="button" id="pick-none">전체 해제</button>
+          </div>
+        </div>
+        <div class="word-pick-list">
+          ${sortedForPick.map(v => `
+            <label class="word-pick-row">
+              <input type="checkbox" class="word-pick" data-id="${v.id}" checked>
+              <span class="wp-word">${escapeHtml(v.word)}</span>
+              <span class="wp-meaning">${escapeHtml(v.meaning)}</span>
+              <span class="wp-count">${v.count}회</span>
+            </label>
+          `).join('')}
+        </div>
         <button class="primary-btn" id="test-start" style="width:100%;">테스트 시작</button>
       </div>
     `;
@@ -1108,20 +1260,35 @@
         overlay.querySelectorAll('.mode-opt').forEach(o=>o.classList.toggle('active', o===opt));
       });
     });
+    overlay.querySelector('#pick-all').addEventListener('click', ()=>{
+      overlay.querySelectorAll('.word-pick').forEach(cb=>cb.checked = true);
+    });
+    overlay.querySelector('#pick-none').addEventListener('click', ()=>{
+      overlay.querySelectorAll('.word-pick').forEach(cb=>cb.checked = false);
+    });
     overlay.querySelector('#test-close').addEventListener('click', ()=>overlay.remove());
     overlay.querySelector('#test-start').addEventListener('click', ()=>{
-      startQuiz(mode);
-      overlay.remove();
+      const checked = overlay.querySelectorAll('.word-pick:checked');
+      const ids = Array.from(checked).map(el=>el.dataset.id);
+      if(ids.length===0){ alert('테스트할 단어를 하나 이상 선택해주세요!'); return; }
+      const selected = vocab.filter(v=>ids.includes(v.id));
+      startQuiz(mode, selected);
     });
   }
 
-  function startQuiz(mode){
-    const pool = [...vocab].sort((a,b)=>a.count-b.count).slice(0, 20);
-    // shuffle
-    for(let i=pool.length-1;i>0;i--){
+  function shuffleArray(arr){
+    const a = [...arr];
+    for(let i=a.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
-      [pool[i],pool[j]] = [pool[j],pool[i]];
+      [a[i],a[j]] = [a[j],a[i]];
     }
+    return a;
+  }
+
+  function startQuiz(mode, words){
+    const overlay = document.getElementById('test-overlay');
+    if(overlay) overlay.remove();
+    const pool = shuffleArray(words);
     quizState = { mode, words: pool, idx:0, correct:0 };
     renderQuiz();
   }
@@ -1189,6 +1356,7 @@
         fb.className = 'quiz-feedback no';
       }
       saveVocab();
+      syncVocabDoc(cur);
       overlay.querySelector('#quiz-submit').disabled = true;
       input.disabled = true;
       setTimeout(()=>{
@@ -1295,6 +1463,7 @@
         study[name].sessions.push({ date: currentSessionDate, seconds: elapsedSec });
       }
       saveStudy();
+      syncStudyDoc(name);
 
       const sessions = study[name].sessions;
       const total = sessions.reduce((a,s)=>a+s.seconds,0);
@@ -1382,6 +1551,17 @@
     document.getElementById('total-days').textContent = `${allDays.size}일`;
   }
 
+  /* ---------- cloud connect UI wiring ---------- */
+  const cloudUrlInput = document.getElementById('cloud-url-input');
+  if(cloudUrl) cloudUrlInput.value = cloudUrl;
+  document.getElementById('cloud-connect-btn').addEventListener('click', ()=>{
+    const val = cloudUrlInput.value.trim();
+    if(!val) return;
+    cloudUrl = val;
+    LS.set('planner_cloud_url', cloudUrl);
+    startCloudSync();
+  });
+
   /* ---------- init ---------- */
   applyTheme();
   renderHomeLabel();
@@ -1389,6 +1569,7 @@
   renderWeekRow();
   renderDayPanel();
   renderVocab();
+  if(cloudUrl) startCloudSync();
 })();
 </script>
 </body>
