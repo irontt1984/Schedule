@@ -220,10 +220,10 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
       <button class="voice-mic" id="micBtn" aria-label="음성으로 입력">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg>
       </button>
-      <input id="qText" placeholder="점심 김밥천국 12000원 국민" autocomplete="off">
+      <input id="qText" placeholder="어제 점심 김밥 12000원 앵기 청주페이" autocomplete="off">
       <button class="fill" id="fillBtn">채우기</button>
     </div>
-    <p id="voiceStatus">마이크를 누르고 "지출내용, 금액, 구분" 순서로 말해 주세요.</p>
+    <p id="voiceStatus">마이크를 누르고 "(날짜), 지출내용, 금액, 구분" 순서로 말해 주세요. 날짜를 빼면 오늘로 기록돼요.</p>
   </div>
 
   <div class="grid2">
@@ -257,19 +257,30 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
 /* ================= 설정 ================= */
 const API_URL = 'https://script.google.com/macros/s/AKfycbwk8-jVKxNy6VfMas8PP96GoPN2QYxaXgsul6bYnfc1NBJ3dtR-pzF-O7tJMVDHv02U_w/exec';
 
-const METHODS = ['계좌이체','현금','국민','현대','청주페이','기타카드'];
+const METHODS = ['오빠야 계좌이체','앵기 계좌이체','현금','국민','현대','오빠야 청주페이','앵기 청주페이','기타카드'];
 const CATEGORIES = ['저축성','식비','주거비','생활용품비','의류비','미용비','교육비','문화생활비','의료비','통신비','경조사비','용돈','기타'];
 const SPEND_CATS = CATEGORIES.filter(c => c !== '저축성');
 
 // 음성에서 '구분'을 알아듣는 말들
+const PERSON_WORDS = { '오빠야':['오빠야','오빠','오빠꺼','오빠 거'], '앵기':['앵기','엥기','앵귀','앵기꺼','앵기 거'] };
+const TRANSFER_WORDS = ['계좌이체','계좌 이체','이체','계좌'];
+const CJPAY_WORDS = ['청주페이','청주 페이','청주pay','청주'];
 const METHOD_WORDS = {
-  '계좌이체':['계좌이체','계좌 이체','이체','계좌'],
   '현금':['현금'],
   '국민':['국민카드','국민 카드','국민','케이비','KB'],
   '현대':['현대카드','현대 카드','현대'],
-  '청주페이':['청주페이','청주 페이','청주pay','청주'],
   '기타카드':['기타카드','기타 카드','기타','다른 카드','카드'],
 };
+// "오빠야 계좌이체", "앵기 청주페이"처럼 사람 이름 + 결제방법
+for(const [person, pws] of Object.entries(PERSON_WORDS)){
+  for(const [kind, kws] of [['계좌이체', TRANSFER_WORDS], ['청주페이', CJPAY_WORDS]]){
+    const key = `${person} ${kind}`;
+    METHOD_WORDS[key] = pws.flatMap(p => kws.flatMap(k => [`${p} ${k}`, `${p}${k}`]));
+  }
+}
+// 사람 이름 없이 "계좌이체", "청주페이"만 말한 경우 (누구 것인지는 확인 필요)
+METHOD_WORDS['?계좌이체'] = TRANSFER_WORDS;
+METHOD_WORDS['?청주페이'] = CJPAY_WORDS;
 // 지출내용으로 '분류'를 미리 골라 두는 말들 (나중에 직접 고칠 수 있음)
 const CAT_WORDS = {
   '저축성':['적금','저축','청약','투자','연금'],
@@ -458,8 +469,49 @@ function parseKoreanNumber(str){
   }
   return total + section + num;
 }
+function isoDate(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function korNum(s){ return /^\d+$/.test(s) ? Number(s) : parseKoreanNumber(s.replace(/시/g,'십').replace(/유/g,'육')); }
+function makeDate(y, m, d){ const x = new Date(y, m-1, d); return (x.getMonth() === m-1 && x.getDate() === d) ? x : null; }
+const WEEK = {일:0,월:1,화:2,수:3,목:4,금:5,토:6};
+
+// 말 속의 날짜를 찾아서 떼어냄. 없으면 date는 null (= 오늘)
+function parseDateFrom(text){
+  const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const rules = [
+    [/(그저께|그제|엊그제)(에)?/, () => addDays(t0,-2)],
+    [/어제(에)?/, () => addDays(t0,-1)],
+    [/오늘(에)?/, () => t0],
+    [/(?:(\d{4})\s*년\s*)?(\d{1,2}|[일이삼사오유육칠팔구시십]{1,3})\s*월\s*(\d{1,2}|[일이삼사오육칠팔구십]{1,4}?)\s*일(에|날)?/, m => {
+      const mon = korNum(m[2]), day = korNum(m[3]);
+      let y = m[1] ? Number(m[1]) : t0.getFullYear();
+      let d = makeDate(y, mon, day);
+      if(d && !m[1] && d > t0) d = makeDate(y-1, mon, day);   // 미래면 작년으로
+      return d;
+    }],
+    [/(지난\s?주|저번\s?주)\s*([월화수목금토일])요일(에|날)?/, m => {
+      const monday = addDays(t0, -((t0.getDay()+6)%7));
+      return addDays(monday, -7 + (WEEK[m[2]]+6)%7);
+    }],
+    [/(?:이번\s?주\s*)?([월화수목금토일])요일(에|날)?/, m => addDays(t0, -((t0.getDay() - WEEK[m[1]] + 7) % 7))],
+    [/(\d{1,2})\s*일(에|날)?(?![가-힣])/, m => {
+      const day = Number(m[1]);
+      let d = makeDate(t0.getFullYear(), t0.getMonth()+1, day);
+      if(!d || d > t0){ const pm = new Date(t0.getFullYear(), t0.getMonth()-1, 1); d = makeDate(pm.getFullYear(), pm.getMonth()+1, day); }
+      return d;
+    }],
+  ];
+  for(const [re, fn] of rules){
+    const m = text.match(re);
+    if(m){ const d = fn(m); if(d) return { date: isoDate(d), rest: text.replace(m[0], ' ').replace(/\s+/g,' ').trim() }; }
+  }
+  return { date: null, rest: text };
+}
+
 function parseSpeech(raw){
   let t = raw.replace(/[.,!?·]/g,' ').replace(/\s+/g,' ').trim();
+  const dr = parseDateFrom(t);
+  t = dr.rest;
   let method = null;
   // 끝부분의 "~로 결제", "~으로" 등은 떼고 구분을 찾음
   const stripped = t.replace(/\s*(으로|로)?\s*(결제|계산|했어|했음|함)?$/,'').trim();
@@ -482,7 +534,15 @@ function parseSpeech(raw){
     const m = desc.match(/^(.*?)([0-9][0-9,]*)$/);
     if(m && m[1].trim()){ desc = m[1].trim(); amount = Number(m[2].replace(/,/g,'')); }
   }
-  return { desc, amount, method };
+  // 사람 이름 없이 "계좌이체/청주페이"만 말했으면 마지막에 쓴 사람 것으로 채우고 확인 요청
+  let methodUnsure = false;
+  if(method && method.startsWith('?')){
+    const kind = method.slice(1);
+    const last = store.get('hh_lastMethod') || '';
+    method = last.endsWith(kind) ? last : `오빠야 ${kind}`;
+    methodUnsure = true;
+  }
+  return { date: dr.date, desc, amount, method, methodUnsure };
 }
 function guessCategory(desc){
   for(const [c, ws] of Object.entries(CAT_WORDS)){ if(ws.some(w => desc.includes(w))) return c; }
@@ -491,16 +551,21 @@ function guessCategory(desc){
 function applyQuick(text){
   if(!text.trim()) return;
   const r = parseSpeech(text);
-  $('fDate').value = today();
+  $('fDate').value = r.date || today();
+  if(r.date) flash('fDate');
   if(r.desc){ $('fDesc').value = r.desc; flash('fDesc'); }
   if(r.amount){ $('fAmount').value = r.amount.toLocaleString('ko-KR'); flash('fAmount'); }
   if(r.method){ $('fMethod').value = r.method; flash('fMethod'); }
   const c = guessCategory(r.desc || '');
   if(c){ $('fCat').value = c; flash('fCat'); }
   const missing = [!r.desc&&'지출내용', !r.amount&&'금액', !r.method&&'구분'].filter(Boolean);
-  $('voiceStatus').textContent = missing.length
-    ? `${missing.join(', ')}은(는) 못 알아들었어요. 아래에서 직접 골라 주세요.`
-    : '채웠어요. 분류를 확인하고 저장하세요.';
+  const dt = new Date(($('fDate').value) + 'T00:00:00');
+  const dateMsg = `${dt.getMonth()+1}월 ${dt.getDate()}일(${'일월화수목금토'[dt.getDay()]})`;
+  let msg = missing.length
+    ? `${dateMsg}로 채웠어요. ${missing.join(', ')}은(는) 못 알아들었으니 직접 골라 주세요.`
+    : `${dateMsg}로 채웠어요. 분류를 확인하고 저장하세요.`;
+  if(r.methodUnsure) msg += ' 누구 계좌이체/청주페이인지도 확인해 주세요.';
+  $('voiceStatus').textContent = msg;
 }
 function flash(id){ const el=$(id); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
 
@@ -514,7 +579,7 @@ function startVoice(){
   if(rec){ rec.stop(); return; }
   rec = new SR();
   rec.lang = 'ko-KR'; rec.interimResults = true; rec.maxAlternatives = 1;
-  rec.onstart = () => { $('micBtn').classList.add('on'); $('voiceStatus').textContent = '듣고 있어요… "지출내용, 금액, 구분"'; };
+  rec.onstart = () => { $('micBtn').classList.add('on'); $('voiceStatus').textContent = '듣고 있어요… "(날짜) 지출내용, 금액, 구분"'; };
   rec.onresult = e => {
     let txt = ''; for(const r of e.results) txt += r[0].transcript;
     $('qText').value = txt;
@@ -530,96 +595,4 @@ function startVoice(){
 }
 
 /* ================= 입력 폼 ================= */
-$('fMethod').innerHTML = METHODS.map(m=>`<option>${m}</option>`).join('');
-$('fCat').innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join('');
-
-function openForm(item, voice){
-  state.editingId = item ? item.id : null;
-  $('sheetTitle').textContent = item ? '기록 수정' : '기록하기';
-  $('saveBtn').textContent = item ? '수정 저장' : '저장하기';
-  $('delBtn').hidden = !item;
-  $('voiceBox').hidden = !!item;
-  $('fDate').value = item ? item.date : today();
-  $('fMethod').value = item ? item.method : (store.get('hh_lastMethod') || METHODS[2]);
-  $('fCat').value = item ? item.category : '식비';
-  $('fDesc').value = item ? item.desc : '';
-  $('fAmount').value = item ? Number(item.amount).toLocaleString('ko-KR') : '';
-  $('qText').value = ''; $('fErr').textContent = '';
-  $('voiceStatus').textContent = '마이크를 누르고 "지출내용, 금액, 구분" 순서로 말해 주세요.';
-  $('backdrop').classList.add('open'); $('sheet').classList.add('open');
-  if(voice) startVoice();
-}
-function closeForm(){ if(rec) rec.stop(); $('backdrop').classList.remove('open'); $('sheet').classList.remove('open'); }
-
-$('fAmount').addEventListener('input', e => { const n=e.target.value.replace(/[^\d]/g,''); e.target.value = n ? Number(n).toLocaleString('ko-KR') : ''; });
-$('fillBtn').onclick = () => applyQuick($('qText').value);
-$('qText').addEventListener('keydown', e => { if(e.key==='Enter') applyQuick($('qText').value); });
-$('micBtn').onclick = startVoice;
-
-$('saveBtn').onclick = async () => {
-  const amount = Number($('fAmount').value.replace(/[^\d]/g,''));
-  const item = { id: state.editingId, date: $('fDate').value, method: $('fMethod').value, category: $('fCat').value,
-                 desc: $('fDesc').value.trim(), amount };
-  if(!item.desc){ $('fErr').textContent = '지출내용을 입력해 주세요.'; return; }
-  if(!amount){ $('fErr').textContent = '결제금액을 입력해 주세요.'; return; }
-  if(!item.date){ $('fErr').textContent = '날짜를 골라 주세요.'; return; }
-  $('saveBtn').disabled = true;
-  try{
-    await apiPost({action: item.id ? 'update' : 'add', item});
-    store.set('hh_lastMethod', item.method);
-    closeForm(); toast(item.id ? '수정했어요' : '저장했어요');
-    state.month = item.date.slice(0,7); load();
-  }catch(e){ $('fErr').textContent = e.message; }
-  finally{ $('saveBtn').disabled = false; }
-};
-$('delBtn').onclick = async () => {
-  if(!confirm('이 기록을 삭제할까요?')) return;
-  $('delBtn').disabled = true;
-  try{ await apiPost({action:'delete', id: state.editingId}); closeForm(); toast('삭제했어요'); load(); }
-  catch(e){ $('fErr').textContent = e.message; }
-  finally{ $('delBtn').disabled = false; }
-};
-
-/* ================= 기타 이벤트 ================= */
-$('recBtn').onclick = () => openForm();
-$('micTopBtn').onclick = () => openForm(null, true);
-$('closeBtn').onclick = closeForm;
-$('backdrop').onclick = closeForm;
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeForm(); });
-$('prevM').onclick = () => { state.month = shiftMonth(state.month,-1); state.showAll=false; load(); };
-$('nextM').onclick = () => { state.month = shiftMonth(state.month, 1); state.showAll=false; load(); };
-$('list').addEventListener('click', e => {
-  if(e.target.id === 'moreBtn'){ state.showAll = !state.showAll; renderList(); return; }
-  const r = e.target.closest('.row'); if(!r) return;
-  const it = state.items.find(i=>i.id===r.dataset.id); if(it) openForm(it);
-});
-$('anaBody').addEventListener('click', async e => {
-  const td = e.target.closest('.budget-cell'); if(!td) return;
-  const cat = td.dataset.cat;
-  const v = prompt(`${cat} 월 예산 (원)`, state.budgets[cat] || '');
-  if(v === null) return;
-  const amount = Number(String(v).replace(/[^\d]/g,'')) || 0;
-  try{ await apiPost({action:'setBudget', category: cat, amount}); state.budgets[cat] = amount; render(); toast('예산을 저장했어요'); }
-  catch(err){ toast(err.message); }
-});
-
-/* PIN */
-$('settingsBtn').onclick = () => { $('gPin').value = state.pin; $('gate').classList.add('open'); };
-$('gBtn').onclick = async () => {
-  const pin = $('gPin').value.trim();
-  if(!pin){ $('gErr').textContent = 'PIN을 입력해 주세요.'; return; }
-  state.pin = pin; $('gBtn').disabled = true; $('gErr').textContent = '';
-  try{ await apiGet({action:'check'}); store.set('hh_pin', pin); $('gate').classList.remove('open'); load(); }
-  catch(e){ $('gErr').textContent = e.message; }
-  finally{ $('gBtn').disabled = false; }
-};
-$('gPin').addEventListener('keydown', e => { if(e.key==='Enter') $('gBtn').click(); });
-
-/* 시작 */
-if(API_URL.startsWith('여기에')){
-  document.body.innerHTML = '<p style="padding:40px;text-align:center">index.html 안의 API_URL에 Apps Script 웹앱 주소를 넣어 주세요.</p>';
-}else if(!state.pin){ $('gate').classList.add('open'); render(); }
-else { render(); load(); }
-</script>
-</body>
-</html>
+$('fMethod').innerHTML = METHODS.map(m=>`<option>${m}
