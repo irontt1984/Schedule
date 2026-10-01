@@ -595,4 +595,97 @@ function startVoice(){
 }
 
 /* ================= 입력 폼 ================= */
-$('fMethod').innerHTML = METHODS.map(m=>`<option>${m}
+$('fMethod').innerHTML = METHODS.map(m=>`<option>${m}</option>`).join('');
+$('fCat').innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join('');
+
+function openForm(item, voice){
+  state.editingId = item ? item.id : null;
+  $('sheetTitle').textContent = item ? '기록 수정' : '기록하기';
+  $('saveBtn').textContent = item ? '수정 저장' : '저장하기';
+  $('delBtn').hidden = !item;
+  $('voiceBox').hidden = !!item;
+  $('fDate').value = item ? item.date : today();
+  if(item && !METHODS.includes(item.method)){ const o=document.createElement('option'); o.textContent=item.method; $('fMethod').appendChild(o); }
+  $('fMethod').value = item ? item.method : (store.get('hh_lastMethod') || '국민');
+  $('fCat').value = item ? item.category : '식비';
+  $('fDesc').value = item ? item.desc : '';
+  $('fAmount').value = item ? Number(item.amount).toLocaleString('ko-KR') : '';
+  $('qText').value = ''; $('fErr').textContent = '';
+  $('voiceStatus').textContent = '마이크를 누르고 "(날짜), 지출내용, 금액, 구분" 순서로 말해 주세요. 날짜를 빼면 오늘로 기록돼요.';
+  $('backdrop').classList.add('open'); $('sheet').classList.add('open');
+  if(voice) startVoice();
+}
+function closeForm(){ if(rec) rec.stop(); $('backdrop').classList.remove('open'); $('sheet').classList.remove('open'); }
+
+$('fAmount').addEventListener('input', e => { const n=e.target.value.replace(/[^\d]/g,''); e.target.value = n ? Number(n).toLocaleString('ko-KR') : ''; });
+$('fillBtn').onclick = () => applyQuick($('qText').value);
+$('qText').addEventListener('keydown', e => { if(e.key==='Enter') applyQuick($('qText').value); });
+$('micBtn').onclick = startVoice;
+
+$('saveBtn').onclick = async () => {
+  const amount = Number($('fAmount').value.replace(/[^\d]/g,''));
+  const item = { id: state.editingId, date: $('fDate').value, method: $('fMethod').value, category: $('fCat').value,
+                 desc: $('fDesc').value.trim(), amount };
+  if(!item.desc){ $('fErr').textContent = '지출내용을 입력해 주세요.'; return; }
+  if(!amount){ $('fErr').textContent = '결제금액을 입력해 주세요.'; return; }
+  if(!item.date){ $('fErr').textContent = '날짜를 골라 주세요.'; return; }
+  $('saveBtn').disabled = true;
+  try{
+    await apiPost({action: item.id ? 'update' : 'add', item});
+    store.set('hh_lastMethod', item.method);
+    closeForm(); toast(item.id ? '수정했어요' : '저장했어요');
+    state.month = item.date.slice(0,7); load();
+  }catch(e){ $('fErr').textContent = e.message; }
+  finally{ $('saveBtn').disabled = false; }
+};
+$('delBtn').onclick = async () => {
+  if(!confirm('이 기록을 삭제할까요?')) return;
+  $('delBtn').disabled = true;
+  try{ await apiPost({action:'delete', id: state.editingId}); closeForm(); toast('삭제했어요'); load(); }
+  catch(e){ $('fErr').textContent = e.message; }
+  finally{ $('delBtn').disabled = false; }
+};
+
+/* ================= 기타 이벤트 ================= */
+$('recBtn').onclick = () => openForm();
+$('micTopBtn').onclick = () => openForm(null, true);
+$('closeBtn').onclick = closeForm;
+$('backdrop').onclick = closeForm;
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeForm(); });
+$('prevM').onclick = () => { state.month = shiftMonth(state.month,-1); state.showAll=false; load(); };
+$('nextM').onclick = () => { state.month = shiftMonth(state.month, 1); state.showAll=false; load(); };
+$('list').addEventListener('click', e => {
+  if(e.target.id === 'moreBtn'){ state.showAll = !state.showAll; renderList(); return; }
+  const r = e.target.closest('.row'); if(!r) return;
+  const it = state.items.find(i=>i.id===r.dataset.id); if(it) openForm(it);
+});
+$('anaBody').addEventListener('click', async e => {
+  const td = e.target.closest('.budget-cell'); if(!td) return;
+  const cat = td.dataset.cat;
+  const v = prompt(`${cat} 월 예산 (원)`, state.budgets[cat] || '');
+  if(v === null) return;
+  const amount = Number(String(v).replace(/[^\d]/g,'')) || 0;
+  try{ await apiPost({action:'setBudget', category: cat, amount}); state.budgets[cat] = amount; render(); toast('예산을 저장했어요'); }
+  catch(err){ toast(err.message); }
+});
+
+/* PIN */
+$('settingsBtn').onclick = () => { $('gPin').value = state.pin; $('gate').classList.add('open'); };
+$('gBtn').onclick = async () => {
+  const pin = $('gPin').value.trim();
+  if(!pin){ $('gErr').textContent = 'PIN을 입력해 주세요.'; return; }
+  state.pin = pin; $('gBtn').disabled = true; $('gErr').textContent = '';
+  try{ await apiGet({action:'check'}); store.set('hh_pin', pin); $('gate').classList.remove('open'); load(); }
+  catch(e){ $('gErr').textContent = e.message; }
+  finally{ $('gBtn').disabled = false; }
+};
+$('gPin').addEventListener('keydown', e => { if(e.key==='Enter') $('gBtn').click(); });
+
+/* 시작 */
+if(API_URL.startsWith('여기에')){
+  document.body.innerHTML = '<p style="padding:40px;text-align:center">index.html 안의 API_URL에 Apps Script 웹앱 주소를 넣어 주세요.</p>';
+}else if(!state.pin){ $('gate').classList.add('open'); render(); }
+else { render(); load(); }
+</script>
+</body>
+</html>
