@@ -12,12 +12,14 @@
 :root{
   --bg:#FFF6F9; --card:#FFFFFF; --pink:#F28AB2; --pink-d:#D4588A; --pink-l:#FDE8F0; --pink-ll:#FFF0F5;
   --ink:#4A3340; --sub:#9B7E8B; --line:#F3D8E3; --up:#E0475B; --down:#4677CC;
+  --mint:#7CCFB0; --lav:#B6A3F0; --peach:#FFB38A; --sky:#8EC5FF; --lemon:#FFE07A;
+  --rainbow:linear-gradient(90deg,#F28AB2,#FFB38A,#FFE07A,#7CCFB0,#8EC5FF,#B6A3F0);
   --round:"Gowun Dodum", "Apple SD Gothic Neo", sans-serif;
   --sans:"IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+body{background:radial-gradient(circle at 0% 0%,#FFE9F1 0,transparent 45%),radial-gradient(circle at 100% 30%,#EFE8FF 0,transparent 40%),radial-gradient(circle at 0% 80%,#E6F7F0 0,transparent 40%),var(--bg);background-attachment:fixed;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
   padding-bottom:env(safe-area-inset-bottom,0);-webkit-tap-highlight-color:transparent}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
@@ -26,8 +28,9 @@ button{cursor:pointer;border:none;background:none}
 [hidden]{display:none!important}
 
 /* 상단 고정 바 */
+.top::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--rainbow)}
 .top{position:sticky;top:0;z-index:5;background:rgba(255,246,249,.94);backdrop-filter:blur(8px);
-  padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;border-bottom:1px solid var(--line)}
+  padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;}
 .top-inner{max-width:640px;margin:0 auto}
 .title-row{display:flex;align-items:center;justify-content:space-between}
 h1{font-family:var(--round);font-size:1.15rem;font-weight:400;color:var(--pink-d)}
@@ -36,7 +39,7 @@ h1{font-family:var(--round);font-size:1.15rem;font-weight:400;color:var(--pink-d
 .rec-btn{background:var(--pink);color:#fff;font-weight:700;font-size:1.05rem;border-radius:14px;padding:13px;
   box-shadow:0 4px 0 var(--pink-d)}
 .rec-btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--pink-d)}
-.mic-btn{width:54px;border-radius:14px;background:var(--card);border:2px solid var(--pink);color:var(--pink-d);
+.mic-btn{width:54px;border-radius:14px;background:#F1ECFF;border:2px solid var(--lav);color:#6B55C2;
   display:grid;place-items:center}
 
 .wrap{max-width:640px;margin:0 auto;padding:14px 16px 40px}
@@ -48,7 +51,10 @@ h1{font-family:var(--round);font-size:1.15rem;font-weight:400;color:var(--pink-d
 .month strong{font-family:var(--round);font-weight:400;font-size:1.2rem;min-width:8.5em;text-align:center}
 
 /* 이번 달 요약 */
-.summary{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;text-align:center}
+.summary{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;text-align:center;position:relative;overflow:hidden}
+.summary::before{content:'';position:absolute;left:0;right:0;top:0;height:6px;background:var(--rainbow)}
+.cat-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:12px auto 2px;max-width:340px;background:var(--line)}
+.cat-bar i{display:block;height:100%}
 .summary p{color:var(--sub);font-size:.88rem}
 .summary .big{font-family:var(--sans);font-weight:700;font-size:clamp(2rem,9vw,2.6rem);color:var(--pink-d);letter-spacing:-.02em;line-height:1.2}
 .summary .sub{display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:.88rem;color:var(--sub)}
@@ -56,12 +62,15 @@ h1{font-family:var(--round);font-size:1.15rem;font-weight:400;color:var(--pink-d
 .cmp-up{color:var(--up)} .cmp-down{color:var(--down)}
 
 section{margin-top:22px}
+h2 > span.hd{display:inline-flex;align-items:center;gap:6px}
+h2 > span.hd::before{content:'';width:10px;height:10px;border-radius:3px;background:var(--c,#F28AB2);transform:rotate(45deg)}
 h2{font-family:var(--round);font-weight:400;font-size:1.1rem;margin:0 2px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.cdot{display:inline-block;width:9px;height:9px;border-radius:50%;border:1.5px solid;margin-right:6px;vertical-align:0}
 h2 small{font-family:var(--sans);font-size:.8rem;color:var(--sub)}
 
 /* 내역 */
 .list{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.day-head{display:flex;justify-content:space-between;background:var(--pink-ll);color:var(--sub);font-size:.82rem;padding:6px 14px}
+.day-head{display:flex;justify-content:space-between;background:linear-gradient(90deg,#FFF0F5,#F5F0FF);color:var(--sub);font-size:.82rem;padding:6px 14px}
 .row{width:100%;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-align:left;
   padding:10px 14px;border-top:1px solid var(--line)}
 .row:hover{background:var(--pink-ll)}
@@ -69,7 +78,7 @@ h2 small{font-family:var(--sans);font-size:.8rem;color:var(--sub)}
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
 .tag{white-space:nowrap}
 .tag{font-size:.74rem;padding:1px 8px;border-radius:999px;background:var(--pink-l);color:var(--pink-d)}
-.tag.m{background:#F1ECF4;color:#7C6A86}
+.tag.m{background:#fff;color:#7C6A86;border:1px solid #E4DCEB}
 .row .a{font-weight:600}
 .empty{text-align:center;color:var(--sub);padding:32px 16px}
 .more{display:block;width:100%;padding:10px;color:var(--pink-d);font-size:.9rem;border-top:1px solid var(--line)}
@@ -78,20 +87,20 @@ h2 small{font-family:var(--sans);font-size:.8rem;color:var(--sub)}
 .fx-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;border-top:1px solid var(--line);padding-right:12px}
 .fx-row:first-child{border-top:none}
 .fx-main{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;padding:10px 0 10px 14px;min-width:0}
-.fx-day{font-size:.78rem;color:var(--pink-d);background:var(--pink-l);border-radius:8px;padding:4px 0;width:3.2em;text-align:center}
+.fx-day{font-size:.78rem;color:#94560F;background:#FFEBCC;border-radius:8px;padding:4px 0;width:3.2em;text-align:center}
 .fx-main .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fx-main .a{font-weight:600}
-.fx-btn{font-size:.8rem;font-weight:700;color:#fff;background:var(--pink);border-radius:999px;padding:5px 12px}
+.fx-btn{font-size:.8rem;font-weight:700;color:#fff;background:var(--mint);border-radius:999px;padding:5px 12px}
 .fx-done{font-size:.78rem;color:var(--sub);white-space:nowrap}
 .fx-actions{display:flex;gap:8px;margin-top:8px}
 .sub-btn{flex:1;padding:11px;border-radius:12px;border:1.5px dashed var(--pink);color:var(--pink-d);font-weight:600;background:var(--card)}
-.sub-btn.strong{border-style:solid;background:var(--pink);color:#fff}
+.sub-btn.strong{border:1.5px solid var(--mint);background:var(--mint);color:#fff}
 .tag.fx{background:#FFF3D6;color:#A0731A}
 .note{font-size:.8rem;color:var(--sub);margin-top:10px}
 
 /* 분석 표 */
 .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.panel-title{background:var(--pink);color:#fff;text-align:center;font-weight:600;padding:8px}
+.panel-title{background:linear-gradient(90deg,#F28AB2,#C99BF0);color:#fff;text-align:center;font-weight:600;padding:8px}
 .table-scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:470px}
 th{background:var(--pink-ll);color:var(--sub);font-weight:500;padding:7px 6px;border-bottom:1px solid var(--line)}
@@ -194,11 +203,12 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
       <span>소비성 <b class="num" id="totalSpend">0원</b></span>
       <span>저축성 <b class="num" id="totalSave">0원</b></span>
     </div>
+    <div class="cat-bar" id="catBar"></div>
     <div class="sub" id="cmpPrev"></div>
   </div>
 
   <section>
-    <h2>매월 고정지출 <small id="fxInfo"></small></h2>
+    <h2><span class="hd" style="--c:var(--peach)">매월 고정지출</span> <small id="fxInfo"></small></h2>
     <div class="list" id="fxList"></div>
     <div class="fx-actions">
       <button class="sub-btn" id="fxAddBtn">+ 고정지출 추가</button>
@@ -207,12 +217,12 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
   </section>
 
   <section>
-    <h2>지출 내역 <small id="listCount"></small></h2>
+    <h2><span class="hd" style="--c:var(--mint)">지출 내역</span> <small id="listCount"></small></h2>
     <div class="list" id="list"></div>
   </section>
 
   <section>
-    <h2>소비성 지출 분석 <small>예산 칸을 눌러 수정</small></h2>
+    <h2><span class="hd" style="--c:var(--lav)">소비성 지출 분석</span> <small>예산 칸을 눌러 수정</small></h2>
     <div class="panel">
       <div class="table-scroll">
         <table>
@@ -304,7 +314,7 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
 const API_URL = 'https://script.google.com/macros/s/AKfycbwk8-jVKxNy6VfMas8PP96GoPN2QYxaXgsul6bYnfc1NBJ3dtR-pzF-O7tJMVDHv02U_w/exec';
 
 const METHODS = ['오빠야 계좌이체','계좌이체','현금','국민','현대','오빠야 청주페이','청주페이','기타카드'];
-const CATEGORIES = ['저축성','식비','주거비','생활용품비','의류비','미용비','교육비','문화생활비','의료비','통신비','주유비','차량유지비','세금','경조사비','용돈','기타'];
+const CATEGORIES = ['저축성','식비','관리비','주거비','생활용품비','의류비','미용비','교육비','문화생활비','의료비','통신비','주유비','차량유지비','세금','경조사비','용돈','기타'];
 const SPEND_CATS = CATEGORIES.filter(c => c !== '저축성');
 
 // 음성에서 '구분'을 알아듣는 말들
@@ -326,7 +336,8 @@ const METHOD_WORDS = {
 // 지출내용으로 '분류'를 미리 골라 두는 말들 (나중에 직접 고칠 수 있음)
 const CAT_WORDS = {
   '저축성':['적금','저축','청약','투자','연금'],
-  '주거비':['관리비','월세','전기세','가스비','수도세','대출이자','전기요금','가스요금'],
+  '관리비':['관리비'],
+  '주거비':['월세','전세','전기세','가스비','수도세','대출이자','전기요금','가스요금'],
   '통신비':['통신비','휴대폰','핸드폰','인터넷','폰요금'],
   '세금':['세금','재산세','자동차세','주민세','소득세','지방세','과태료','범칙금'],
   '주유비':['주유','기름','휘발유','경유','주유소','LPG'],
@@ -341,7 +352,17 @@ const CAT_WORDS = {
   '생활용품비':['다이소','세제','휴지','생활용품','샴푸'],
   '식비':['점심','저녁','아침','식당','밥','커피','카페','배달','치킨','피자','마트','장보기','빵','간식','편의점','김밥','외식','고기','떡볶이'],
 };
-const TILE_COLORS = ['#E2689A','#EC82AC','#F29BBE','#F6B2CD','#F8C4D8','#FAD3E1','#FBDFE9','#FCE8EF'];
+// 분류별 색 [배경, 글자]
+const CAT_COLORS = {
+  '저축성':['#BDEBD9','#2C7458'], '식비':['#FFB8CC','#A3305A'], '관리비':['#FFD7A8','#94560F'],
+  '주거비':['#FFC6AE','#9A4520'], '생활용품비':['#FFEFA3','#7E6A0C'], '의류비':['#D3F2C2','#3B742E'],
+  '미용비':['#F6C4EF','#8C3784'], '교육비':['#B4D3FF','#2A4E92'], '문화생활비':['#CFC4FF','#4A3C9A'],
+  '의료비':['#B7EEF4','#1B6C76'], '통신비':['#D3DAFF','#3D4A96'], '주유비':['#FFB3B0','#9E2B2B'],
+  '차량유지비':['#E3CFB6','#6A4C2C'], '세금':['#D9D6EC','#4D4A78'], '경조사비':['#FFD3E8','#A23B72'],
+  '용돈':['#FFE3B8','#8A6214'], '기타':['#E9E2E6','#6A5A62'],
+};
+const catColor = c => CAT_COLORS[c] || ['#EEE6EA','#6A5A62'];
+const catTag = c => `<span class="tag" style="background:${catColor(c)[0]};color:${catColor(c)[1]}">${esc(c)}</span>`;
 
 /* ================= 도우미 ================= */
 const $ = id => document.getElementById(id);
@@ -408,6 +429,9 @@ function render(){
   $('cmpPrev').innerHTML = prevSpend || spend
     ? `<span>지난달보다 소비성 지출 <b class="${diff>0?'cmp-up':'cmp-down'} num">${diff>0?'▲':'▼'} ${won(Math.abs(diff))}</b> ${diff>0?'더 썼어요':'덜 썼어요'}</span>` : '';
 
+  const parts = SPEND_CATS.map(c => [c, cur[c]||0]).filter(x => x[1] > 0).sort((a,b)=>b[1]-a[1]);
+  $('catBar').innerHTML = spend ? parts.map(([c,v]) => `<i title="${esc(c)} ${won(v)}" style="width:${v/spend*100}%;background:${catColor(c)[0]}"></i>`).join('') : '';
+  $('catBar').hidden = !spend;
   renderFixed();
   renderList();
   renderTable(cur, prev);
@@ -429,7 +453,7 @@ function renderList(){
     return `<div class="day-head"><span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${wk[dt.getDay()]})</span><span class="num">${won(total)}</span></div>` +
       arr.map(i => `<button class="row" data-id="${esc(i.id)}">
         <span style="min-width:0"><div class="t">${esc(i.desc || i.category)}</div>
-        <div class="tags">${i.fixedId?'<span class="tag fx">고정</span>':''}<span class="tag">${esc(i.category)}</span><span class="tag m">${esc(i.method)}</span></div></span>
+        <div class="tags">${i.fixedId?'<span class="tag fx">고정</span>':''}${catTag(i.category)}<span class="tag m">${esc(i.method)}</span></div></span>
         <span class="a num">${won(i.amount)}</span></button>`).join('');
   }).join('');
   if(items.length > LIMIT) html += `<button class="more" id="moreBtn">${state.showAll ? '접기' : `${items.length - LIMIT}건 더 보기`}</button>`;
@@ -449,7 +473,7 @@ function renderFixed(){
       <button class="fx-main" data-fx="${esc(f.id)}">
         <span class="fx-day">${f.day >= 31 ? '말일' : f.day + '일'}</span>
         <span style="min-width:0"><div class="t">${esc(f.desc)}</div>
-        <div class="tags"><span class="tag">${esc(f.category)}</span><span class="tag m">${esc(f.method)}</span></div></span>
+        <div class="tags">${catTag(f.category)}<span class="tag m">${esc(f.method)}</span></div></span>
         <span class="a num">${won(f.amount)}</span>
       </button>
       ${done(f.id) ? '<span class="fx-done">✓ 기록됨</span>' : `<button class="fx-btn" data-rec="${esc(f.id)}">기록</button>`}
@@ -477,7 +501,7 @@ function renderTable(cur, prev){
 function rowHtml(name, s, b, p, editable){
   const gap = b - s, d = s - p;
   const arrow = d > 0 ? '<span class="arrow-up">▲</span>' : d < 0 ? '<span class="arrow-down">▼</span>' : '<span style="color:var(--sub)">-</span>';
-  return `<tr><td>${esc(name)}</td><td class="num">${fmt(s)}</td>
+  return `<tr><td>${editable ? `<i class="cdot" style="background:${catColor(name)[0]};border-color:${catColor(name)[1]}"></i>` : ''}${esc(name)}</td><td class="num">${fmt(s)}</td>
     <td class="num ${editable?'budget-cell':''}" ${editable?`data-cat="${esc(name)}"`:''}>${b?fmt(b):(editable?'입력':'-')}</td>
     <td class="num ${gap<0?'neg':'pos'}">${gap>0?'+':''}${gap.toLocaleString('ko-KR')}</td>
     <td class="num">${fmt(p)}</td>
@@ -518,8 +542,7 @@ function renderTreemap(cur){
   const W = box.clientWidth, H = box.clientHeight;
   const total = data.reduce((s,d)=>s+d.value,0);
   box.innerHTML = squarify(data, W, H).map((t, idx) => {
-    const color = TILE_COLORS[Math.min(idx, TILE_COLORS.length-1)];
-    const text = idx < 3 ? '#fff' : '#8A3D60';
+    const [color, text] = catColor(t.name);
     const pct = Math.round(t.value/total*100);
     const showDetail = t.w > 70 && t.h > 50;
     const showName = t.w > 34 && t.h > 22;
@@ -763,7 +786,7 @@ function openFixedForm(f){
   $('fxDelBtn').hidden = !f;
   $('fxDesc').value = f ? f.desc : '';
   $('fxAmount').value = f ? Number(f.amount).toLocaleString('ko-KR') : '';
-  $('fxCat').value = f ? f.category : '주거비';
+  $('fxCat').value = f ? f.category : '관리비';
   if(f && !METHODS.includes(f.method)){ const o=document.createElement('option'); o.textContent=f.method; $('fxMethod').appendChild(o); }
   $('fxMethod').value = f ? f.method : '계좌이체';
   $('fxDay').value = f ? String(Math.min(31, f.day)) : '25';
