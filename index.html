@@ -66,12 +66,28 @@ h2 small{font-family:var(--sans);font-size:.8rem;color:var(--sub)}
   padding:10px 14px;border-top:1px solid var(--line)}
 .row:hover{background:var(--pink-ll)}
 .row .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tags{display:flex;gap:4px;margin-top:2px}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.tag{white-space:nowrap}
 .tag{font-size:.74rem;padding:1px 8px;border-radius:999px;background:var(--pink-l);color:var(--pink-d)}
 .tag.m{background:#F1ECF4;color:#7C6A86}
 .row .a{font-weight:600}
 .empty{text-align:center;color:var(--sub);padding:32px 16px}
 .more{display:block;width:100%;padding:10px;color:var(--pink-d);font-size:.9rem;border-top:1px solid var(--line)}
+
+/* 고정지출 */
+.fx-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;border-top:1px solid var(--line);padding-right:12px}
+.fx-row:first-child{border-top:none}
+.fx-main{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;padding:10px 0 10px 14px;min-width:0}
+.fx-day{font-size:.78rem;color:var(--pink-d);background:var(--pink-l);border-radius:8px;padding:4px 0;width:3.2em;text-align:center}
+.fx-main .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fx-main .a{font-weight:600}
+.fx-btn{font-size:.8rem;font-weight:700;color:#fff;background:var(--pink);border-radius:999px;padding:5px 12px}
+.fx-done{font-size:.78rem;color:var(--sub);white-space:nowrap}
+.fx-actions{display:flex;gap:8px;margin-top:8px}
+.sub-btn{flex:1;padding:11px;border-radius:12px;border:1.5px dashed var(--pink);color:var(--pink-d);font-weight:600;background:var(--card)}
+.sub-btn.strong{border-style:solid;background:var(--pink);color:#fff}
+.tag.fx{background:#FFF3D6;color:#A0731A}
+.note{font-size:.8rem;color:var(--sub);margin-top:10px}
 
 /* 분석 표 */
 .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
@@ -182,6 +198,15 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
   </div>
 
   <section>
+    <h2>매월 고정지출 <small id="fxInfo"></small></h2>
+    <div class="list" id="fxList"></div>
+    <div class="fx-actions">
+      <button class="sub-btn" id="fxAddBtn">+ 고정지출 추가</button>
+      <button class="sub-btn strong" id="fxAllBtn" hidden></button>
+    </div>
+  </section>
+
+  <section>
     <h2>지출 내역 <small id="listCount"></small></h2>
     <div class="list" id="list"></div>
   </section>
@@ -240,6 +265,27 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
   </div>
 </div>
 
+<!-- 고정지출 입력 시트 -->
+<div class="sheet" id="fxSheet" role="dialog" aria-modal="true" aria-labelledby="fxTitle">
+  <div class="sheet-head">
+    <h3 id="fxTitle">고정지출 추가</h3>
+    <button class="close" id="fxCloseBtn" aria-label="닫기">×</button>
+  </div>
+  <div class="field"><label for="fxDesc">지출내용</label><input class="in" id="fxDesc" placeholder="예: 아파트 관리비" maxlength="200"></div>
+  <div class="field"><label for="fxAmount">결제금액 (매월)</label><input class="in amount num" id="fxAmount" inputmode="numeric" placeholder="0" autocomplete="off"></div>
+  <div class="grid2">
+    <div class="field"><label for="fxCat">분류</label><select class="in" id="fxCat"></select></div>
+    <div class="field"><label for="fxMethod">구분</label><select class="in" id="fxMethod"></select></div>
+  </div>
+  <div class="field"><label for="fxDay">매월 결제일</label><select class="in" id="fxDay"></select></div>
+  <p class="note">고정지출은 목록만 저장돼요. 매달 '기록' 버튼을 누르면 그 달 지출 내역에 들어가고, 금액이 달라진 달은 기록 후 내역에서 고치면 돼요.</p>
+  <p class="err" id="fxErr"></p>
+  <div class="actions">
+    <button class="btn ghost" id="fxDelBtn" hidden>삭제</button>
+    <button class="btn" id="fxSaveBtn">저장하기</button>
+  </div>
+</div>
+
 <!-- PIN -->
 <div class="gate" id="gate">
   <div class="gate-box">
@@ -258,7 +304,7 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
 const API_URL = 'https://script.google.com/macros/s/AKfycbwk8-jVKxNy6VfMas8PP96GoPN2QYxaXgsul6bYnfc1NBJ3dtR-pzF-O7tJMVDHv02U_w/exec';
 
 const METHODS = ['오빠야 계좌이체','계좌이체','현금','국민','현대','오빠야 청주페이','청주페이','기타카드'];
-const CATEGORIES = ['저축성','식비','주거비','생활용품비','의류비','미용비','교육비','문화생활비','의료비','통신비','경조사비','용돈','기타'];
+const CATEGORIES = ['저축성','식비','주거비','생활용품비','의류비','미용비','교육비','문화생활비','의료비','통신비','주유비','차량유지비','세금','경조사비','용돈','기타'];
 const SPEND_CATS = CATEGORIES.filter(c => c !== '저축성');
 
 // 음성에서 '구분'을 알아듣는 말들
@@ -282,6 +328,9 @@ const CAT_WORDS = {
   '저축성':['적금','저축','청약','투자','연금'],
   '주거비':['관리비','월세','전기세','가스비','수도세','대출이자','전기요금','가스요금'],
   '통신비':['통신비','휴대폰','핸드폰','인터넷','폰요금'],
+  '세금':['세금','재산세','자동차세','주민세','소득세','지방세','과태료','범칙금'],
+  '주유비':['주유','기름','휘발유','경유','주유소','LPG'],
+  '차량유지비':['세차','정비','엔진오일','타이어','자동차보험','차보험','주차','톨비','통행료','하이패스','차 수리','카센터'],
   '의료비':['병원','약국','치과','한의원','안과','소아과','진료'],
   '교육비':['학원','교재','강의','수업료','등록금','책'],
   '미용비':['미용실','헤어','네일','화장품','올리브영','염색','커트'],
@@ -309,7 +358,7 @@ function prevMonth(ym){ const [y,m]=ym.split('-').map(Number); const d=new Date(
 function shiftMonth(ym,n){ const [y,m]=ym.split('-').map(Number); const d=new Date(y,m-1+n,1); return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
 function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
 
-const state = { pin: store.get('hh_pin') || '', month: today().slice(0,7), items: [], prev: [], budgets: {}, editingId: null, showAll: false };
+const state = { pin: store.get('hh_pin') || '', month: today().slice(0,7), items: [], prev: [], budgets: {}, fixed: [], editingId: null, fxEditingId: null, showAll: false };
 
 /* ================= 서버 통신 ================= */
 async function apiGet(params){
@@ -332,6 +381,7 @@ async function load(){
     state.items = d.items.filter(i => i.date.startsWith(state.month));
     state.prev  = d.items.filter(i => i.date.startsWith(pm));
     state.budgets = d.budgets || {};
+    state.fixed = d.fixed || [];
     render();
   }catch(e){
     toast('불러오지 못했어요: ' + e.message);
@@ -358,6 +408,7 @@ function render(){
   $('cmpPrev').innerHTML = prevSpend || spend
     ? `<span>지난달보다 소비성 지출 <b class="${diff>0?'cmp-up':'cmp-down'} num">${diff>0?'▲':'▼'} ${won(Math.abs(diff))}</b> ${diff>0?'더 썼어요':'덜 썼어요'}</span>` : '';
 
+  renderFixed();
   renderList();
   renderTable(cur, prev);
   renderTreemap(cur);
@@ -378,11 +429,40 @@ function renderList(){
     return `<div class="day-head"><span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${wk[dt.getDay()]})</span><span class="num">${won(total)}</span></div>` +
       arr.map(i => `<button class="row" data-id="${esc(i.id)}">
         <span style="min-width:0"><div class="t">${esc(i.desc || i.category)}</div>
-        <div class="tags"><span class="tag">${esc(i.category)}</span><span class="tag m">${esc(i.method)}</span></div></span>
+        <div class="tags">${i.fixedId?'<span class="tag fx">고정</span>':''}<span class="tag">${esc(i.category)}</span><span class="tag m">${esc(i.method)}</span></div></span>
         <span class="a num">${won(i.amount)}</span></button>`).join('');
   }).join('');
   if(items.length > LIMIT) html += `<button class="more" id="moreBtn">${state.showAll ? '접기' : `${items.length - LIMIT}건 더 보기`}</button>`;
   $('list').innerHTML = html;
+}
+
+function renderFixed(){
+  const fx = [...state.fixed].sort((a,b)=> a.day - b.day);
+  const done = id => state.items.some(i => i.fixedId === id);
+  const left = fx.filter(f => !done(f.id));
+  const total = fx.reduce((s,f)=>s+f.amount,0);
+  $('fxInfo').textContent = fx.length ? `매월 ${won(total)} · 이번 달 ${fx.length-left.length}/${fx.length} 기록` : '';
+  $('fxAllBtn').hidden = !left.length;
+  $('fxAllBtn').textContent = `남은 ${left.length}건 모두 기록`;
+  if(!fx.length){ $('fxList').innerHTML = '<div class="empty">관리비, 통신비, 보험처럼 매달 나가는 돈을 등록해 두세요.</div>'; return; }
+  $('fxList').innerHTML = fx.map(f => `<div class="fx-row">
+      <button class="fx-main" data-fx="${esc(f.id)}">
+        <span class="fx-day">${f.day >= 31 ? '말일' : f.day + '일'}</span>
+        <span style="min-width:0"><div class="t">${esc(f.desc)}</div>
+        <div class="tags"><span class="tag">${esc(f.category)}</span><span class="tag m">${esc(f.method)}</span></div></span>
+        <span class="a num">${won(f.amount)}</span>
+      </button>
+      ${done(f.id) ? '<span class="fx-done">✓ 기록됨</span>' : `<button class="fx-btn" data-rec="${esc(f.id)}">기록</button>`}
+    </div>`).join('');
+}
+async function recordFixed(ids){
+  $('app').classList.add('loading');
+  try{
+    const d = await apiPost({action:'recordFixed', month: state.month, ids});
+    toast(d.count ? `고정지출 ${d.count}건을 기록했어요` : '이미 기록되어 있어요');
+    await load();
+  }catch(e){ toast(e.message); }
+  finally{ $('app').classList.remove('loading'); }
 }
 
 function renderTable(cur, prev){
@@ -641,7 +721,7 @@ function openForm(item, voice){
   $('backdrop').classList.add('open'); $('sheet').classList.add('open');
   if(voice) startVoice();
 }
-function closeForm(){ cancelVoice(); $('backdrop').classList.remove('open'); $('sheet').classList.remove('open'); }
+function closeForm(){ cancelVoice(); $('backdrop').classList.remove('open'); $('sheet').classList.remove('open'); $('fxSheet').classList.remove('open'); }
 
 $('fAmount').addEventListener('input', e => { const n=e.target.value.replace(/[^\d]/g,''); e.target.value = n ? Number(n).toLocaleString('ko-KR') : ''; });
 $('fillBtn').onclick = () => applyQuick($('qText').value);
@@ -671,6 +751,59 @@ $('delBtn').onclick = async () => {
   catch(e){ $('fErr').textContent = e.message; }
   finally{ $('delBtn').disabled = false; }
 };
+
+/* ================= 고정지출 폼 ================= */
+$('fxCat').innerHTML = CATEGORIES.map(c=>`<option>${c}</option>`).join('');
+$('fxMethod').innerHTML = METHODS.map(m=>`<option>${m}</option>`).join('');
+$('fxDay').innerHTML = Array.from({length:30}, (_,i)=>`<option value="${i+1}">매월 ${i+1}일</option>`).join('') + '<option value="31">매월 말일</option>';
+
+function openFixedForm(f){
+  state.fxEditingId = f ? f.id : null;
+  $('fxTitle').textContent = f ? '고정지출 수정' : '고정지출 추가';
+  $('fxDelBtn').hidden = !f;
+  $('fxDesc').value = f ? f.desc : '';
+  $('fxAmount').value = f ? Number(f.amount).toLocaleString('ko-KR') : '';
+  $('fxCat').value = f ? f.category : '주거비';
+  if(f && !METHODS.includes(f.method)){ const o=document.createElement('option'); o.textContent=f.method; $('fxMethod').appendChild(o); }
+  $('fxMethod').value = f ? f.method : '계좌이체';
+  $('fxDay').value = f ? String(Math.min(31, f.day)) : '25';
+  $('fxErr').textContent = '';
+  $('backdrop').classList.add('open'); $('fxSheet').classList.add('open');
+}
+$('fxAmount').addEventListener('input', e => { const n=e.target.value.replace(/[^\d]/g,''); e.target.value = n ? Number(n).toLocaleString('ko-KR') : ''; });
+$('fxDesc').addEventListener('change', () => { const c = guessCategory($('fxDesc').value); if(c && !state.fxEditingId) $('fxCat').value = c; });
+$('fxSaveBtn').onclick = async () => {
+  const fixed = { id: state.fxEditingId, desc: $('fxDesc').value.trim(), amount: Number($('fxAmount').value.replace(/[^\d]/g,'')),
+                  category: $('fxCat').value, method: $('fxMethod').value, day: Number($('fxDay').value) };
+  if(!fixed.desc){ $('fxErr').textContent = '지출내용을 입력해 주세요.'; return; }
+  if(!fixed.amount){ $('fxErr').textContent = '결제금액을 입력해 주세요.'; return; }
+  $('fxSaveBtn').disabled = true;
+  try{
+    await apiPost({action: fixed.id ? 'updateFixed' : 'addFixed', fixed});
+    closeForm(); toast(fixed.id ? '고정지출을 수정했어요' : '고정지출을 추가했어요'); load();
+  }catch(e){ $('fxErr').textContent = e.message; }
+  finally{ $('fxSaveBtn').disabled = false; }
+};
+$('fxDelBtn').onclick = async () => {
+  if(!confirm('이 고정지출을 목록에서 삭제할까요?\n이미 기록된 지난 지출은 그대로 남아요.')) return;
+  $('fxDelBtn').disabled = true;
+  try{ await apiPost({action:'deleteFixed', id: state.fxEditingId}); closeForm(); toast('삭제했어요'); load(); }
+  catch(e){ $('fxErr').textContent = e.message; }
+  finally{ $('fxDelBtn').disabled = false; }
+};
+$('fxAddBtn').onclick = () => openFixedForm();
+$('fxCloseBtn').onclick = () => closeForm();
+$('fxAllBtn').onclick = () => {
+  const left = state.fixed.filter(f => !state.items.some(i => i.fixedId === f.id));
+  if(!left.length) return;
+  const [y,m] = state.month.split('-');
+  if(confirm(`${y}년 ${Number(m)}월 고정지출 ${left.length}건(${won(left.reduce((s,f)=>s+f.amount,0))})을 기록할까요?`)) recordFixed(left.map(f=>f.id));
+};
+$('fxList').addEventListener('click', e => {
+  const rb = e.target.closest('[data-rec]'); if(rb){ recordFixed([rb.dataset.rec]); return; }
+  const fb = e.target.closest('[data-fx]'); if(!fb) return;
+  const f = state.fixed.find(x => x.id === fb.dataset.fx); if(f) openFixedForm(f);
+});
 
 /* ================= 기타 이벤트 ================= */
 $('recBtn').onclick = () => openForm();
