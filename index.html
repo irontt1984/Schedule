@@ -113,6 +113,18 @@ td.neg{color:var(--up)} td.pos{color:var(--ink)}
 .arrow-up{color:var(--up)} .arrow-down{color:var(--down)}
 .hint{font-size:.78rem;color:var(--sub);padding:8px 12px}
 
+/* 결제수단별 */
+.mrow{display:grid;grid-template-columns:8.4em 1fr 7.4em;gap:4px 10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.mrow:first-child{border-top:none}
+.mrow.zero{opacity:.45}
+.mname{font-size:.84rem;letter-spacing:-.02em;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar{height:10px;background:#F6EEF2;border-radius:5px;overflow:hidden}
+.mbar i{display:block;height:100%;border-radius:5px}
+.mamt{font-weight:600;font-size:.9rem;text-align:right;white-space:nowrap}
+.mamt small{font-weight:400;color:var(--sub);margin-left:4px}
+.mprev{grid-column:2 / 4;font-size:.76rem;color:var(--sub);text-align:right}
+.mtotal{display:flex;justify-content:space-between;padding:10px 14px;background:linear-gradient(90deg,#FFF0F5,#EEF5FF);font-weight:700;border-top:1px solid var(--line)}
+
 /* 트리맵 */
 .treemap{position:relative;height:300px;margin:0}
 .tile{position:absolute;border:2px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -240,6 +252,11 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
       <div class="treemap" id="treemap"></div>
     </div>
   </section>
+
+  <section>
+    <h2><span class="hd" style="--c:var(--sky)">구분(결제수단)별 지출</span> <small>저축성 포함 전체</small></h2>
+    <div class="panel" id="methodPanel"></div>
+  </section>
 </main>
 
 <!-- 입력 시트 -->
@@ -313,7 +330,7 @@ select.in{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.or
 /* ================= 설정 ================= */
 const API_URL = 'https://script.google.com/macros/s/AKfycbwk8-jVKxNy6VfMas8PP96GoPN2QYxaXgsul6bYnfc1NBJ3dtR-pzF-O7tJMVDHv02U_w/exec';
 
-const METHODS = ['오빠야 계좌이체','계좌이체','현금','국민','현대','오빠야 청주페이','청주페이','기타카드'];
+const METHODS = ['오빠야 계좌이체','계좌이체','현금','국민','현대','롯데','오빠야 청주페이','청주페이','기타카드'];
 const CATEGORIES = ['저축성','식비','관리비','주거비','생활용품비','의류비','미용비','교육비','문화생활비','의료비','통신비','주유비','차량유지비','세금','경조사비','용돈','기타'];
 const SPEND_CATS = CATEGORIES.filter(c => c !== '저축성');
 
@@ -331,6 +348,7 @@ const METHOD_WORDS = {
   '현금':['현금'],
   '국민':['국민카드','국민 카드','국민','케이비','KB'],
   '현대':['현대카드','현대 카드','현대'],
+  '롯데':['롯데카드','롯데 카드','롯데'],
   '기타카드':['기타카드','기타 카드','기타','다른 카드','카드'],
 };
 // 지출내용으로 '분류'를 미리 골라 두는 말들 (나중에 직접 고칠 수 있음)
@@ -361,6 +379,12 @@ const CAT_COLORS = {
   '차량유지비':['#E3CFB6','#6A4C2C'], '세금':['#D9D6EC','#4D4A78'], '경조사비':['#FFD3E8','#A23B72'],
   '용돈':['#FFE3B8','#8A6214'], '기타':['#E9E2E6','#6A5A62'],
 };
+const METHOD_COLORS = {
+  '오빠야 계좌이체':['#B4D3FF','#2A4E92'], '계좌이체':['#D6E7FF','#3A5F9C'], '현금':['#D3F2C2','#3B742E'],
+  '국민':['#FFE3A3','#8A6214'], '현대':['#D9D6EC','#4D4A78'], '롯데':['#FFB3B0','#9E2B2B'],
+  '오빠야 청주페이':['#BDEBD9','#2C7458'], '청주페이':['#DDF5EB','#3D7F64'], '기타카드':['#E9E2E6','#6A5A62'],
+};
+const methodColor = m => METHOD_COLORS[m] || ['#EEE6EA','#6A5A62'];
 const catColor = c => CAT_COLORS[c] || ['#EEE6EA','#6A5A62'];
 const catTag = c => `<span class="tag" style="background:${catColor(c)[0]};color:${catColor(c)[1]}">${esc(c)}</span>`;
 
@@ -436,6 +460,7 @@ function render(){
   renderList();
   renderTable(cur, prev);
   renderTreemap(cur);
+  renderMethods();
 }
 
 function renderList(){
@@ -478,6 +503,26 @@ function renderFixed(){
       </button>
       ${done(f.id) ? '<span class="fx-done">✓ 기록됨</span>' : `<button class="fx-btn" data-rec="${esc(f.id)}">기록</button>`}
     </div>`).join('');
+}
+function renderMethods(){
+  const sum = items => { const o = {}; items.forEach(i => o[i.method] = (o[i.method]||0) + i.amount); return o; };
+  const cur = sum(state.items), prev = sum(state.prev);
+  const extra = Object.keys({...cur, ...prev}).filter(m => !METHODS.includes(m));   // 예전 이름으로 저장된 구분
+  const names = [...METHODS, ...extra];
+  const total = Object.values(cur).reduce((a,b)=>a+b,0);
+  const prevTotal = Object.values(prev).reduce((a,b)=>a+b,0);
+  const max = Math.max(1, ...names.map(n => cur[n]||0));
+  const diffHtml = d => d > 0 ? `<span class="arrow-up">▲ ${d.toLocaleString('ko-KR')}</span>` : d < 0 ? `<span class="arrow-down">▼ ${(-d).toLocaleString('ko-KR')}</span>` : '변동 없음';
+  const rows = [...names].sort((a,b) => (cur[b]||0) - (cur[a]||0)).map(n => {
+    const v = cur[n]||0, p = prev[n]||0, [bg, fg] = methodColor(n);
+    return `<div class="mrow ${v||p ? '' : 'zero'}">
+      <div class="mname"><i class="cdot" style="background:${bg};border-color:${fg}"></i>${esc(n)}</div>
+      <div class="mbar"><i style="width:${v/max*100}%;background:${bg};box-shadow:inset 0 0 0 1px ${fg}33"></i></div>
+      <div class="mamt num">${won(v)}<small>${total ? Math.round(v/total*100) : 0}%</small></div>
+      ${v||p ? `<div class="mprev num">전월 ${won(p)} · ${diffHtml(v-p)}</div>` : ''}
+    </div>`;
+  }).join('');
+  $('methodPanel').innerHTML = rows + `<div class="mtotal num"><span>합계</span><span>${won(total)} <small style="font-weight:400;color:var(--sub)">· 전월 ${diffHtml(total-prevTotal)}</small></span></div>`;
 }
 async function recordFixed(ids){
   $('app').classList.add('loading');
