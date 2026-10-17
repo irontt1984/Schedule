@@ -91,6 +91,7 @@ h2 small{font-family:var(--sans);font-size:.8rem;color:var(--sub)}
 .fx-main .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fx-main .a{font-weight:600}
 .fx-btn{font-size:.8rem;font-weight:700;color:#fff;background:var(--mint);border-radius:999px;padding:5px 12px}
+.fx-btn.undo{background:#fff;color:var(--up);border:1.5px solid #F5B5BF}
 .fx-done{font-size:.78rem;color:var(--sub);white-space:nowrap}
 .fx-actions{display:flex;gap:8px;margin-top:8px}
 .sub-btn{flex:1;padding:11px;border-radius:12px;border:1.5px dashed var(--pink);color:var(--pink-d);font-weight:600;background:var(--card)}
@@ -502,7 +503,7 @@ function renderFixed(){
         <div class="tags">${catTag(f.category)}<span class="tag m">${esc(f.method)}</span></div></span>
         <span class="a num">${won(f.amount)}</span>
       </button>
-      ${done(f.id) ? `<span class="fx-done">✓ ${mm} 기록됨</span>` : `<button class="fx-btn" data-rec="${esc(f.id)}">${mm} 기록</button>`}
+      ${done(f.id) ? `<button class="fx-btn undo" data-undo="${esc(f.id)}">${mm} 기록취소</button>` : `<button class="fx-btn" data-rec="${esc(f.id)}">${mm} 기록</button>`}
     </div>`).join('');
 }
 function renderMethods(){
@@ -530,6 +531,21 @@ async function recordFixed(ids){
   try{
     const d = await apiPost({action:'recordFixed', month: state.month, ids});
     toast(d.count ? `고정지출 ${d.count}건을 기록했어요` : '이미 기록되어 있어요');
+    await load();
+  }catch(e){ toast(e.message); }
+  finally{ $('app').classList.remove('loading'); }
+}
+
+async function undoFixed(fixedId){
+  const recs = state.items.filter(i => i.fixedId === fixedId);
+  if(!recs.length) return;
+  const f = state.fixed.find(x => x.id === fixedId);
+  const mm = Number(state.month.slice(5)) + '월';
+  if(!confirm(`${mm}에 기록된 '${f ? f.desc : recs[0].desc}'(${won(recs.reduce((s,i)=>s+i.amount,0))})을 지출 내역에서 삭제할까요?`)) return;
+  $('app').classList.add('loading');
+  try{
+    for(const r of recs) await apiPost({action:'delete', id: r.id});
+    toast(`${mm} 기록을 취소했어요`);
     await load();
   }catch(e){ toast(e.message); }
   finally{ $('app').classList.remove('loading'); }
@@ -870,6 +886,7 @@ $('fxAllBtn').onclick = () => {
 };
 $('fxList').addEventListener('click', e => {
   const rb = e.target.closest('[data-rec]'); if(rb){ recordFixed([rb.dataset.rec]); return; }
+  const ub = e.target.closest('[data-undo]'); if(ub){ undoFixed(ub.dataset.undo); return; }
   const fb = e.target.closest('[data-fx]'); if(!fb) return;
   const f = state.fixed.find(x => x.id === fb.dataset.fx); if(f) openFixedForm(f);
 });
