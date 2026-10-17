@@ -490,9 +490,10 @@ function renderFixed(){
   const done = id => state.items.some(i => i.fixedId === id);
   const left = fx.filter(f => !done(f.id));
   const total = fx.reduce((s,f)=>s+f.amount,0);
-  $('fxInfo').textContent = fx.length ? `매월 ${won(total)} · 이번 달 ${fx.length-left.length}/${fx.length} 기록` : '';
+  const mm = Number(state.month.slice(5)) + '월';
+  $('fxInfo').textContent = fx.length ? `매월 ${won(total)} · ${mm} ${fx.length-left.length}/${fx.length} 기록` : '';
   $('fxAllBtn').hidden = !left.length;
-  $('fxAllBtn').textContent = `남은 ${left.length}건 모두 기록`;
+  $('fxAllBtn').textContent = `${mm} 남은 ${left.length}건 모두 기록`;
   if(!fx.length){ $('fxList').innerHTML = '<div class="empty">관리비, 통신비, 보험처럼 매달 나가는 돈을 등록해 두세요.</div>'; return; }
   $('fxList').innerHTML = fx.map(f => `<div class="fx-row">
       <button class="fx-main" data-fx="${esc(f.id)}">
@@ -501,7 +502,7 @@ function renderFixed(){
         <div class="tags">${catTag(f.category)}<span class="tag m">${esc(f.method)}</span></div></span>
         <span class="a num">${won(f.amount)}</span>
       </button>
-      ${done(f.id) ? '<span class="fx-done">✓ 기록됨</span>' : `<button class="fx-btn" data-rec="${esc(f.id)}">기록</button>`}
+      ${done(f.id) ? `<span class="fx-done">✓ ${mm} 기록됨</span>` : `<button class="fx-btn" data-rec="${esc(f.id)}">${mm} 기록</button>`}
     </div>`).join('');
 }
 function renderMethods(){
