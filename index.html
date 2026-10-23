@@ -91,7 +91,7 @@ h2 small{font-family:var(--sans);font-size:.8rem;color:var(--sub)}
 .row{width:100%;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;text-align:left;
   padding:10px 14px;border-top:1px solid var(--line)}
 .row:hover{background:var(--pink-ll)}
-.row .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .t{font-weight:500;word-break:keep-all;overflow-wrap:anywhere}
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
 .tag{white-space:nowrap}
 .tag{font-size:.74rem;padding:1px 8px;border-radius:999px;background:var(--pink-l);color:var(--pink-d)}
@@ -102,10 +102,12 @@ h2 small{font-family:var(--sans);font-size:.8rem;color:var(--sub)}
 
 /* 고정지출 */
 .fx-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;border-top:1px solid var(--line);padding-right:12px}
+.fx-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding:10px 0}
+.fx-side .a{font-weight:600;white-space:nowrap}
 .fx-row:first-child{border-top:none}
-.fx-main{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;padding:10px 0 10px 14px;min-width:0}
+.fx-main{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;text-align:left;padding:10px 0 10px 14px;min-width:0}
 .fx-day{font-size:.78rem;color:#94560F;background:#FFEBCC;border-radius:8px;padding:4px 0;width:3.2em;text-align:center}
-.fx-main .t{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fx-main .t{font-weight:500;word-break:keep-all;overflow-wrap:anywhere}
 .fx-main .a{font-weight:600}
 .fx-btn{font-size:.8rem;font-weight:700;color:#fff;background:var(--mint);border-radius:999px;padding:5px 12px}
 .fx-btn.undo{background:#fff;color:var(--up);border:1.5px solid #F5B5BF}
@@ -545,9 +547,11 @@ function renderFixed(){
         <span class="fx-day">${f.day >= 31 ? '말일' : f.day + '일'}</span>
         <span style="min-width:0"><div class="t">${esc(f.desc)}</div>
         <div class="tags">${catTag(f.category)}<span class="tag m">${esc(f.method)}</span></div></span>
-        <span class="a num">${won(f.amount)}</span>
       </button>
-      ${done(f.id) ? `<button class="fx-btn undo" data-undo="${esc(f.id)}">${mm} 기록취소</button>` : `<button class="fx-btn" data-rec="${esc(f.id)}">${mm} 기록</button>`}
+      <div class="fx-side">
+        <span class="a num">${won(f.amount)}</span>
+        ${done(f.id) ? `<button class="fx-btn undo" data-undo="${esc(f.id)}">${mm} 기록취소</button>` : `<button class="fx-btn" data-rec="${esc(f.id)}">${mm} 기록</button>`}
+      </div>
     </div>`).join('');
 }
 function renderMethods(){
